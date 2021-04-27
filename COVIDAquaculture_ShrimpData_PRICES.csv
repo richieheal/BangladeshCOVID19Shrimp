@@ -1,0 +1,88 @@
+FarmID,FarmSize_Decimal,PondNumber,CulturedSpecies,MainSpecies,ShrimpCoCulture,ShrimpProd,ShrimpPrice_1,ShrimpPrice_2,FinfishCoCulture,NoFinfish,TotalSpecies
+F1,13200,3,Peneaus monodon,Y,Y,1.7,750,550,Y,6,9
+F1,13200,3,Metapenaeus monoceros,N,Y,0.97,500,500,Y,6,9
+F1,13200,3,Metapenaeus brevicornis,N,Y,0.36,350,300,Y,6,9
+F2,2310,2,Peneaus monodon,Y,Y,0.5,700,500,Y,3,5
+F2,2310,2,Macrobrachium rosenbergii ,N,Y,0.5,1200,600,Y,3,5
+F3,1320,1,Peneaus monodon,Y,Y,1.9,450,350,Y,4,6
+F3,1320,1,Metapenaeus monoceros,N,Y,0.5,500,400,Y,4,6
+F4,6600,5,Macrobrachium rosenbergii ,Y,Y,0.25,1000,600,Y,6,9
+F4,6600,5,Metapenaeus monoceros,N,Y,0.03,500,400,Y,6,9
+F4,6600,5,Penaeus orientalis,N,Y,0.03,550,400,Y,6,9
+F5,500,2,Macrobrachium rosenbergii ,Y,N,1.7,600,500,Y,4,5
+F6,531,1,Peneaus monodon,Y,Y,1.5,600,400,Y,4,7
+F6,531,1,Metapenaeus monoceros,N,Y,0.6,500,450,Y,4,7
+F6,531,1,Metapenaeus brevicornis,N,Y,0.5,400,300,Y,4,7
+F7,396,1,Peneaus monodon,Y,N,2.02,650,530,Y,6,7
+F8,3960,3,Peneaus monodon,Y,N,1,850,500,Y,7,8
+F9,396,3,Peneaus monodon,Y,N,3.8,850,500,N,0,1
+F10,528,6,Peneaus monodon,Y,N,30,1150,790,N,0,1
+F11,6600,2,Peneaus monodon,Y,Y,0.8,610,500,Y,4,7
+F11,6600,2,Metapenaeus monoceros,N,Y,0.3,450,450,Y,4,7
+F11,6600,2,Metapenaeus brevicornis,N,Y,0.3,500,500,Y,4,7
+F12,3300,2,Peneaus monodon,Y,Y,0.4,600,370,Y,8,11
+F12,3300,2,Metapenaeus monoceros,N,Y,0.2,450,300,Y,8,11
+F12,3300,2,Metapenaeus brevicornis,N,Y,0.1,400,400,Y,8,11
+F13,495,4,Peneaus monodon,Y,N,3.3,650,500,Y,8,9
+F14,100,1,Peneaus monodon,Y,N,1.3,540,300,Y,4,5
+F15,33,1,Macrobrachium rosenbergii ,Y,Y,6,1000,500,Y,3,6
+F15,33,1,Peneaus monodon,N,Y,1.09,750,550,Y,3,6
+F15,33,1,Metapenaeus monoceros,N,Y,1.2,500,500,Y,3,6
+F16,462,3,Peneaus monodon,Y,Y,1.2,430,300,Y,3,6
+F16,462,3,Metapenaeus monoceros,N,Y,0.2,300,300,Y,3,6
+F16,462,3,Metapenaeus brevicornis,N,Y,0.2,300,300,Y,3,6
+F17,165,2,Peneaus monodon,Y,Y,1.45,800,450,Y,6,8
+F17,165,2,Metapenaeus monoceros,N,Y,0.5,400,350,Y,6,8
+F18,165,2,Peneaus monodon,Y,Y,1.5,450,380,Y,3,5
+F18,165,2,Metapenaeus monoceros,N,Y,0.8,420,380,Y,3,5
+F19,1320,1,Peneaus monodon,Y,Y,1.3,700,550,Y,6,9
+F19,1320,1,Metapenaeus monoceros,N,Y,3.03,450,400,Y,6,9
+F19,1320,1,Metapenaeus brevicornis,N,Y,1.5,400,370,Y,6,9
+F20,297,1,Peneaus monodon,Y,Y,2.7,650,480,Y,4,7
+F20,297,1,Metapenaeus monoceros,N,Y,1.5,400,350,Y,4,7
+F20,297,1,Penaeus orientalis,N,Y,1,400,400,Y,4,7
+F21,198,1,Peneaus monodon,Y,Y,8.08,700,530,Y,4,7
+F21,198,1,Metapenaeus monoceros,N,Y,2.02,500,450,Y,4,7
+F21,198,1,Metapenaeus brevicornis,N,Y,1.01,450,400,Y,4,7
+F22,594,4,Peneaus monodon,Y,N,40,1000,450,N,0,1
+F23,200,3,Peneaus monodon,Y,N,10.6,1075,600,N,0,1
+F24,528,6,Peneaus monodon,Y,N,30,1150,780,N,0,1
+F25,18525,19,Peneaus monodon,Y,N,33,1200,800,N,0,1
+F26,625,2,Peneaus monodon,Y,N,17,900,650,N,0,1
+F27,815,6,Peneaus monodon,Y,N,30.8,1100,700,N,0,1
+F28,3952,5,Peneaus monodon,Y,N,27.2,1200,850,N,0,1
+F29,145,3,Peneaus monodon,Y,Y,5,1000,600,Y,2,4
+F29,145,3,Macrobrachium rosenbergii ,N,Y,2.66,1200,700,Y,2,4
+F30,238,2,Peneaus monodon,Y,Y,1.28,850,550,Y,3,5
+F30,238,2,Macrobrachium rosenbergii ,N,Y,0.5,1000,600,Y,3,5
+F31,202,2,Peneaus monodon,Y,Y,1.6,950,600,Y,3,5
+F31,202,2,Macrobrachium rosenbergii ,N,Y,0.4,1100,600,Y,3,5
+F32,240,2,Peneaus monodon,Y,Y,3.46,900,600,Y,3,5
+F32,240,2,Macrobrachium rosenbergii ,N,Y,2.3,700,400,Y,3,5
+F33,312,3,Peneaus monodon,Y,Y,1,700,500,Y,4,6
+F33,312,3,Macrobrachium rosenbergii ,N,Y,0.6,1200,700,Y,4,6
+F34,339,2,Peneaus monodon,Y,Y,2,850,600,Y,2,4
+F34,339,2,Macrobrachium rosenbergii ,N,Y,1.5,1100,750,Y,2,4
+F35,260,3,Peneaus monodon,Y,N,5.21,750,500,Y,5,6
+F36,156,2,Peneaus monodon,Y,Y,0.6,850,430,Y,6,10
+F36,156,2,Macrobrachium rosenbergii ,N,Y,0.58,1000,700,Y,6,10
+F36,156,2,Metapenaeus monoceros,N,Y,0.96,400,250,Y,6,10
+F36,156,2,Metapenaeus brevicornis,N,Y,0.96,400,290,Y,6,10
+F37,150,1,Peneaus monodon,Y,N,0.25,700,480,Y,3,4
+F38,234,4,Peneaus monodon,Y,Y,0.35,800,560,Y,9,11
+F38,234,4,Macrobrachium rosenbergii ,N,Y,0.55,1000,400,Y,9,11
+F39,624,12,Peneaus monodon,Y,Y,1.4,850,570,Y,5,7
+F39,624,12,Macrobrachium rosenbergii ,N,Y,0.96,1100,750,Y,5,7
+F40,130,1,Peneaus monodon,Y,N,0.5,850,620,Y,2,3
+F41,260,3,Peneaus monodon,Y,Y,1.5,800,580,Y,2,3
+F41,260,3,Macrobrachium rosenbergii ,N,Y,0.5,1000,600,Y,2,3
+F42,800,7,Peneaus monodon,Y,N,1.2,750,500,Y,4,5
+F43,260,1,Peneaus monodon,Y,N,2,800,620,Y,2,3
+F44,35,1,Macrobrachium rosenbergii ,Y,N,0.5,850,650,Y,6,7
+F45,62,1,Macrobrachium rosenbergii ,Y,N,2,800,530,Y,5,6
+F46,63,1,Macrobrachium rosenbergii ,Y,N,0.96,750,400,Y,6,7
+F47,25,1,Macrobrachium rosenbergii ,Y,N,0.95,850,550,Y,6,7
+F48,48,1,Macrobrachium rosenbergii ,Y,N,1.9,900,560,Y,5,6
+F49,200,2,Macrobrachium rosenbergii ,Y,N,1.2,700,375,Y,4,5
+F50,64,1,Macrobrachium rosenbergii ,Y,N,4.5,800,525,N,0,1
+F51,102,2,Macrobrachium rosenbergii ,Y,N,2.4,900,650,Y,3,4

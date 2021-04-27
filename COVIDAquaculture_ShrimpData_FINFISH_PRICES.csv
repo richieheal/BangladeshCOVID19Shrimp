@@ -1,0 +1,156 @@
+FarmID,FarmSize_Decimal,PondNumber,CulturedSpecies,Main_Prod,Main_1,Main_2,CulturedOtherShrimpSpecies,CoShrimp_Prod,CoShrimp_1,CoShrimp_2,SWFin_Coculture,SWFin_Prod,SWFin_1,SWFin_2,FWFin_Coculture,FWFin_Prod,FWFin_1,FWFin_2
+F1,13200,3,Peneaus monodon,1.7,750,550,Metapenaeus monoceros,0.97,500,500,Lates calcarifer,0.29,400,500,Labeo rohita,0.58,150,120
+F1,NA,NA,NA,NA,NA,NA,Metapenaeus brevicornis,0.36,350,300,Mystus vittatus,0.8,300,300,Cyprinus carpio,0.68,120,80
+F1,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Mugil cephalus,1.9,300,300,Oreochromis mossambica,1.7,40,25
+F2,2310,2,Peneaus monodon,0.5,700,500,Macrobrachium rosenbergii ,0.5,1200,600,NA,NA,NA,NA,Labeo rohita,1,135,100
+F2,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Cyprinus carpio,0.7,115,90
+F2,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Cyprinus carpio var. specularis,0.4,100,80
+F3,1320,1,Peneaus monodon,1.9,450,350,Metapenaeus monoceros,0.5,500,400,Lates calcarifer,0.6,500,350,Oreochromis mossambica,0.6,25,20
+F3,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Mystus vittatus,0.6,200,150,NA,NA,NA,NA
+F3,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Mugil cephalus,0.6,200,160,NA,NA,NA,NA
+F4,6600,5,Macrobrachium rosenbergii ,0.25,1000,600,Metapenaeus monoceros,0.03,500,400,Lates calcarifer,0.03,500,350,Labeo rohita,0.01,160,100
+F4,NA,NA,NA,NA,NA,NA,Penaeus orientalis,0.03,550,400,Mystus vittatus,0.1,400,250,Ctenopharyngodon idella,0.12,120,60
+F4,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Mugil cephalus,0.09,450,250,Oreochromis mossambica,0.1,50,25
+F5,500,2,Macrobrachium rosenbergii ,1.7,600,500,NA,NA,NA,NA,Lates calcarifer,0.05,450,350,Oreochromis mossambica,1,40,25
+F5,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Mystus vittatus,0.04,250,200,NA,NA,NA,NA
+F5,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Mugil cephalus,0.04,450,200,NA,NA,NA,NA
+F6,531,1,Peneaus monodon,1.5,600,400,Metapenaeus monoceros,0.6,500,450,Lates calcarifer,0.5,600,300,Oreochromis mossambica,0.3,40,20
+F6,NA,NA,NA,NA,NA,NA,Metapenaeus brevicornis,0.5,400,300,Mystus vittatus,0.3,300,200,NA,NA,NA,NA
+F6,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Mugil cephalus,0.3,250,150,NA,NA,NA,NA
+F7,396,1,Peneaus monodon,2.02,650,530,NA,NA,NA,NA,Lates calcarifer,0.5,500,375,Labeo rohita,1.01,150,110
+F7,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Catla Catla,1.01,140,100
+F7,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Cyprinus carpio,1.01,120,80
+F7,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Ctenopharyngodon idella,1.01,120,70
+F7,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Puntius sarana,0.08,100,75
+F8,3960,3,Peneaus monodon,1,850,500,NA,NA,NA,NA,Lates calcarifer,1.08,250,250,Oreochromis mossambica,1.6,50,50
+F8,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Mystus vittatus,0.3,250,250,NA,NA,NA,NA
+F8,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Mugil cephalus,0.5,200,200,NA,NA,NA,NA
+F8,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Labeo boga,0.05,350,350,NA,NA,NA,NA
+F8,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Scatophagus argus,0.05,200,200,NA,NA,NA,NA
+F8,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Pomadasys hasta,0.05,200,200,NA,NA,NA,NA
+F9,396,3,Peneaus monodon,3.8,850,500,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+F10,528,6,Peneaus monodon,30,1150,790,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+F11,6600,2,Peneaus monodon,0.8,610,500,Metapenaeus monoceros,0.3,450,450,Lates calcarifer,0.2,400,350,Oreochromis mossambica,1,50,40
+F11,NA,NA,NA,NA,NA,NA,Metapenaeus brevicornis,0.3,500,500,Mystus vittatus,0.5,250,200,NA,NA,NA,NA
+F11,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Mugil cephalus,0.07,250,200,NA,NA,NA,NA
+F12,3300,2,Peneaus monodon,0.4,600,370,Metapenaeus monoceros,0.2,450,300,Lates calcarifer,0.12,400,300,Labeo rohita,0.3,135,100
+F12,NA,NA,NA,NA,NA,NA,Metapenaeus brevicornis,0.1,400,400,Mystus vittatus,0.12,380,250,Catla Catla,0.3,130,100
+F12,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Mugil cephalus,0.12,200,180,Cyprinus carpio,0.3,110,75
+F12,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Ctenopharyngodon idella,0.3,100,85
+F12,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Oreochromis mossambica,0.01,40,20
+F13,495,4,Peneaus monodon,3.3,NA,NA,NA,NA,NA,NA,Lates calcarifer,0.4,,,Labeo rohita,0.6,150,100
+F13,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Mystus vittatus,0.3,250,200,Catla Catla,0.4,140,110
+F13,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Mugil cephalus,0.8,250,200,Ctenopharyngodon idella,0.5,100,80
+F13,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Labeo boga,0.4,400,380,Oreochromis mossambica,1.6,,
+F14,100,1,Peneaus monodon,1.3,540,300,NA,NA,NA,NA,Mystus vittatus,0.3,300,200,Cyprinus carpio,1,120,90
+F14,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Mugil cephalus,0.3,300,220,Ctenopharyngodon idella,1,110,85
+F15,33,1,Macrobrachium rosenbergii ,6,1000,500,Peneaus monodon,1.09,750,550,Mystus vittatus,0.6,300,300,Oreochromis mossambica,2.4,25,25
+F15,NA,NA,NA,NA,NA,NA,Metapenaeus monoceros,1.2,500,500,Mugil cephalus,1.8,300,300,NA,NA,NA,NA
+F16,462,3,Peneaus monodon,1.2,430,300,Metapenaeus monoceros,0.2,300,300,Lates calcarifer,0.2,400,350,Oreochromis mossambica,1.5,40,40
+F16,NA,NA,NA,NA,NA,NA,Metapenaeus brevicornis,0.2,300,300,Mugil cephalus,0.2,300,300,NA,NA,NA,NA
+F17,165,2,Peneaus monodon,1.45,800,450,Metapenaeus monoceros,0.5,400,350,Lates calcarifer,0.2,500,270,Labeo rohita,0.1,150,120
+F17,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Mugil cephalus,0.1,350,300,Catla Catla,0.2,150,120
+F17,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Cirrhinus cirrhosis,0.1,115,90
+F17,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Oreochromis mossambica,0.2,60,60
+F18,165,2,Peneaus monodon,1.5,450,380,Metapenaeus monoceros,0.8,420,380,Lates calcarifer,0.2,320,250,Oreochromis mossambica,0.5,40,40
+F18,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Mugil cephalus,0.3,210,200,NA,NA,NA,NA
+F19,1320,1,Peneaus monodon,1.3,NA,NA,Metapenaeus monoceros,3.03,NA,NA,Lates calcarifer,3.03,,,Oreochromis mossambica,3.03,NA,NA
+F19,NA,NA,NA,NA,NA,NA,Metapenaeus brevicornis,1.5,NA,NA,Mystus vittatus,2.5,300,250,NA,NA,NA,NA
+F19,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Mugil cephalus,1.5,300,250,NA,NA,NA,NA
+F19,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Labeo boga,0.2,420,400,NA,NA,NA,NA
+F19,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Pomadasys hasta,0.3,NA,NA,NA,NA,NA,NA
+F20,297,1,Peneaus monodon,2.7,NA,NA,Metapenaeus monoceros,1.5,NA,NA,Lates calcarifer,0.05,NA,NA,Oreochromis mossambica,0.5,NA,NA
+F20,NA,NA,NA,NA,NA,NA,Penaeus orientalis,1,NA,NA,Mugil cephalus,0.13,400,300,NA,NA,NA,NA
+F20,NA,NA,NA,NA,NA,NA,,,NA,NA,Labeo boga,0.3,NA,NA,NA,NA,NA,NA
+F21,198,1,Peneaus monodon,8.08,NA,NA,Metapenaeus monoceros,2.02,NA,NA,Lates calcarifer,3.03,NA,NA,NA,NA,NA,NA
+F21,NA,NA,NA,NA,NA,NA,Metapenaeus brevicornis,1.01,NA,NA,Mystus vittatus,0.2,400,300,NA,NA,NA,NA
+F21,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Mugil cephalus,0.6,350,300,NA,NA,NA,NA
+F21,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Labeo boga,0.2,400,400,NA,NA,NA,NA
+F22,594,4,Peneaus monodon,40,1000,450,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+F23,200,3,Peneaus monodon,10.6,1075,600,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+F24,528,6,Peneaus monodon,30,1150,780,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+F25,18525,19,Peneaus monodon,33,1200,800,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+F26,625,2,Peneaus monodon,17,900,650,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+F27,815,6,Peneaus monodon,30.8,1100,700,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+F28,3952,5,Peneaus monodon,27.2,1200,850,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+F29,145,3,Peneaus monodon,5,1000,600,Macrobrachium rosenbergii ,2.66,1200,700,NA,NA,NA,NA,Ctenopharyngodon idella,4,150,135
+F29,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Oreochromis mossambica,5,50,40
+F30,238,2,Peneaus monodon,1.28,NA,NA,Macrobrachium rosenbergii ,0.5,NA,NA,NA,NA,NA,NA,Labeo rohita,1.5,200,170
+F30,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Catla Catla,1.3,250,200
+F30,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Oreochromis mossambica,0.5,,
+F31,202,2,Peneaus monodon,1.6,950,600,Macrobrachium rosenbergii ,0.4,1100,600,NA,NA,NA,NA,Labeo rohita,0.9,210,190
+F31,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Catla Catla,0.3,250,200
+F31,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Ctenopharyngodon idella,0.62,175,125
+F32,240,2,Peneaus monodon,3.46,900,600,Macrobrachium rosenbergii ,2.3,700,400,Mugil cephalus,2.6,400,300,Labeo rohita,1.54,250,220
+F32,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Ctenopharyngodon idella,0.2,300,235
+F33,312,3,Peneaus monodon,1,700,500,Macrobrachium rosenbergii ,0.6,1200,700,NA,NA,NA,NA,Labeo rohita,1,200,125
+F33,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Catla Catla,1,175,150
+F33,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Cirrhinus cirrhosis,0.75,120,100
+F33,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Ctenopharyngodon idella,0.15,150,100
+F34,339,2,Peneaus monodon,2,NA,NA,Macrobrachium rosenbergii ,1.5,NA,NA,NA,NA,NA,NA,Labeo rohita,2,250,
+F34,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Ctenopharyngodon idella,0.5,150,130
+F35,260,3,Peneaus monodon,5.21,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Labeo rohita,10,150,120
+F35,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Catla Catla,12,175,150
+F35,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Ctenopharyngodon idella,10,200,150
+F35,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Oreochromis mossambica,25,,
+F35,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Puntius sarana,8,90,80
+F36,156,2,Peneaus monodon,0.6,850,430,Macrobrachium rosenbergii ,0.58,1000,700,Lates calcarifer,0.29,420,300,Labeo rohita,1.2,145,110
+F36,NA,NA,NA,NA,NA,NA,Metapenaeus monoceros,0.96,400,250,Mystus vittatus,0.58,300,240,Catla Catla,0.48,150,115
+F36,NA,NA,NA,NA,NA,NA,Metapenaeus brevicornis,0.96,400,290,Mugil cephalus,0.58,200,150,Oreochromis mossambica,0.77,95,50
+F37,150,1,Peneaus monodon,0.25,NA,NA,NA,NA,NA,NA,Mugil cephalus,0.5,200,150,Labeo rohita,2,150,120
+F37,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Ctenopharyngodon idella,0.6,130,110
+F38,234,4,Peneaus monodon,0.35,800,560,Macrobrachium rosenbergii ,0.55,1000,400,Lates calcarifer,0.06,400,250,Labeo rohita,0.9,150,100
+F38,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Mystus vittatus,0.08,250,180,Catla Catla,0.15,175,120
+F38,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Mugil cephalus,0.3,220,200,Cirrhinus cirrhosis,0.15,200,130
+F38,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Cyprinus carpio var. specularis,0.23,100,80
+F38,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Ctenopharyngodon idella,0.28,110,75
+F38,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Oreochromis mossambica,0.23,90,50
+F39,624,12,Peneaus monodon,1.4,850,570,Macrobrachium rosenbergii ,0.96,1100,750,Mystus vittatus,0.4,240,180,Labeo rohita,2.3,175,120
+F39,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Mugil cephalus,0.19,255,200,Catla Catla,0.54,175,110
+F39,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Oreochromis mossambica,0.96,120,80
+F40,130,1,Peneaus monodon,0.5,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Labeo rohita,1.5,120,90
+F40,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Catla Catla,0.8,175,120
+F41,260,3,Peneaus monodon,1.5,NA,NA,Macrobrachium rosenbergii ,0.5,NA,NA,NA,NA,NA,NA,Labeo rohita,1,120,100
+F41,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Catla Catla,1,135,100
+F42,800,7,Peneaus monodon,1.2,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Labeo rohita,1.5,150,140
+F42,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Catla Catla,0.7,150,115
+F42,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Cirrhinus cirrhosis,0.8,140,110
+F42,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Ctenopharyngodon idella,0.5,200,170
+F43,260,1,Peneaus monodon,2,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Labeo rohita,0.8,170,150
+F43,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Catla Catla,0.8,150,120
+F44,35,1,Macrobrachium rosenbergii ,0.5,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Labeo rohita,7,180,160
+F44,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Catla Catla,3,250,200
+F44,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Cirrhinus cirrhosis,3,120,100
+F44,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Cyprinus carpio,1,110,80
+F44,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Ctenopharyngodon idella,0.5,150,130
+F44,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Puntius sarana,5,100,80
+F45,62,1,Macrobrachium rosenbergii ,2,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Labeo rohita,15,150,130
+F45,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Catla Catla,15,175,120
+F45,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Cirrhinus cirrhosis,10,200,130
+F45,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Cyprinus carpio,2.5,120,90
+F45,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Ctenopharyngodon idella,1.5,180,150
+F46,63,1,Macrobrachium rosenbergii ,0.96,750,400,NA,NA,NA,NA,NA,NA,NA,NA,Labeo rohita,2.08,130,95
+F46,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Catla Catla,0.2,135,100
+F46,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Cyprinus carpio var. specularis,0.8,180,150
+F46,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Ctenopharyngodon idella,0.2,125,90
+F46,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Oreochromis mossambica,2.6,90,50
+F46,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Puntius sarana,6.2,100,70
+F47,25,1,Macrobrachium rosenbergii ,0.95,850,550,NA,NA,NA,NA,NA,NA,NA,NA,Labeo rohita,9.6,140,100
+F47,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Catla Catla,5.2,130,100
+F47,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Cirrhinus cirrhosis,3.8,140,110
+F47,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Ctenopharyngodon idella,3.5,125,100
+F47,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Hypophthalmichthys molitrix,8,110,75
+F47,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Puntius sarana,25,100,70
+F48,48,1,Macrobrachium rosenbergii ,1.9,900,560,NA,NA,NA,NA,NA,NA,NA,NA,Labeo rohita,0.5,210,150
+F48,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Ctenopharyngodon idella,3.6,125,90
+F48,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Hypophthalmichthys molitrix,6.1,120,60
+F48,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Pangasianodon hypophthalmus,7.6,100,90
+F48,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Puntius sarana,5.5,100,80
+F49,200,2,Macrobrachium rosenbergii ,1.2,700,375,NA,NA,NA,NA,NA,NA,NA,NA,Labeo rohita,0.25,140,110
+F49,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Catla Catla,0.23,135,95
+F49,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Cirrhinus cirrhosis,0.27,130,100
+F49,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Hypophthalmichthys molitrix,0.27,110,80
+F50,64,1,Macrobrachium rosenbergii ,4.5,800,525,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA
+F51,102,2,Macrobrachium rosenbergii ,2.4,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Labeo rohita,1.8,130,110
+F51,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Catla Catla,2,130,95
+F51,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,NA,Ctenopharyngodon idella,1,200,160
