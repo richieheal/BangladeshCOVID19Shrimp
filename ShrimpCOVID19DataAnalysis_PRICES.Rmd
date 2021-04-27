@@ -21,12 +21,6 @@ library(data.table)
 RawData_PRICES <- setDT(RawData_PRICES)
 RawData_PRICES[, FarmNumber := .I]
 
-##########################################
-# Load in the consumer data
-##########################################
-ConsumerDataFile <- "COVIDAquaculture_ConsumerData.csv"
-ConsumerData <- read.csv(ConsumerDataFile, header = TRUE, skip = 2, stringsAsFactors = TRUE)
-
 #########################################
 # Default plot parameters
 ########################################
