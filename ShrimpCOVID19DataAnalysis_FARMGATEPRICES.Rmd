@@ -1,0 +1,852 @@
+---
+title: "ShrimpCOVID19DataAnalysisPrices"
+author: "Richard Heal"
+date: "12/18/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+#######################################################################
+# Load in the shrimp price data
+#######################################################################
+DataFile <- "COVIDAquaculture_ShrimpData_PRICES.csv"
+RawData_PRICES <- read.csv(DataFile, header = TRUE, skip = 0, stringsAsFactors = TRUE)
+FinDataFile <- "COVIDAquaculture_ShrimpData_FINFISH_PRICES.csv"
+RawData_FINFISH <- read.csv(FinDataFile, header = TRUE, skip = 0, stringsAsFactors = TRUE)
+
+#######################################################################
+# Make a numeric indicator
+#######################################################################
+library(data.table)
+RawData_PRICES <- setDT(RawData_PRICES)
+RawData_PRICES[, FarmNumber := as.integer(sub("F", "", FarmID))]
+
+RawData_FINFISH <- setDT(RawData_FINFISH)
+RawData_FINFISH[, FarmNumber := as.integer(sub("F", "", FarmID))]
+
+# Trim the trailing white space from species
+RawData_PRICES[, CulturedSpecies := trimws(CulturedSpecies, which = c("right"))]
+
+# Get the number of farms
+NumberFarms <- uniqueN(RawData_PRICES, by = c("FarmID"))
+
+# Farms practicing co-culture shrimp species
+NumberCoCultureShrimpFarms <- uniqueN(RawData_PRICES[ShrimpCoCulture == "Y", .N, FarmID], by = c("FarmID"))
+NumberSingleCultureShrimpFarms <- uniqueN(RawData_PRICES[ShrimpCoCulture == "N", .N, FarmID], by = c("FarmID"))
+
+# Farms co-culturing shrimp and finfish
+NumberCoCultureShrimpFinfishFarms <- uniqueN(RawData_PRICES[FinfishCoCulture == "Y", .N, FarmID], by = c("FarmID"))
+NumberNoFinfishCultureShrimpFarms <- uniqueN(RawData_PRICES[FinfishCoCulture == "N", .N, FarmID], by = c("FarmID"))
+
+# Overall for co-culture
+CCShrimp_CCFish <- uniqueN(RawData_PRICES[ShrimpCoCulture == "Y" & FinfishCoCulture == "Y", .N, FarmID], by = c("FarmID"))
+CCShrimp_NCCFish <- uniqueN(RawData_PRICES[ShrimpCoCulture == "Y" & FinfishCoCulture == "N", .N, FarmID], by = c("FarmID"))
+NCCShrimp_CCFish <- uniqueN(RawData_PRICES[ShrimpCoCulture == "N" & FinfishCoCulture == "Y", .N, FarmID], by = c("FarmID"))
+NCCShrimp_NCCFish <- uniqueN(RawData_PRICES[ShrimpCoCulture == "N" & FinfishCoCulture == "N", .N, FarmID], by = c("FarmID"))
+  
+##########################################
+# Load in the consumer data
+##########################################
+#ConsumerDataFile <- "COVIDAquaculture_ConsumerData.csv"
+#ConsumerData <- read.csv(ConsumerDataFile, header = TRUE, skip = 2, stringsAsFactors = TRUE)
+
+#########################################
+# Default plot parameters
+########################################
+PreMarker = 'square-open'
+PostMarker = 'circle'
+PreMarkerColor = 'rgb(0,0,0)'
+PostMarkerColor = 'rgb(0,0,0)'
+SegmentLineColor = 'rgb(50,50,50)'
+AxisTitleFONT = list(family = "Arial", size = 12, color = 'black')
+LegendFONT = list(family = "Arial", size = 12, color = 'black')
+SIGFONT = list(family = "Arial", size = 12, color = 'black')
+DASH = "5px"
+DOT = "2px"
+MarkerSize <- 7
+
+source('~/GitHubRepositoryProjects/BangladeshCOVID19Aqua/GetSignificanceSymbol.R')
+```
+
+## Analysis of Shrimp Aquaculture in Bangladesh Pre and Post COVID 19
+
+This document details the analysis of farm survey data taken on shrimp farms pre and post COVID 19. This part of the analysis is looking at the changes in prices obtained for the product. 
+
+In total there were **`r NumberFarms`** farms that were surveyed and of these farms **`r NumberSingleCultureShrimpFarms`** farms cultured a single species of shrimp, whereas **`r NumberCoCultureShrimpFarms`** cultured a main species of shrimp alongside another species.  
+
+Shrimp farms also co-cultured finfish alongside the shrimp. Of the farms surveyed **`r NumberCoCultureShrimpFinfishFarms`** farms practiced co-culture with finfish and **`r NumberNoFinfishCultureShrimpFarms`** did not.  
+
+Overall, **`r CCShrimp_CCFish`** farms practicised co-culture of shrimp and finfish, **`r CCShrimp_NCCFish`** co-cultured shrimp but not finfish, **`r NCCShrimp_CCFish`** did not co-culture shrimp but did co-culture shrimp with finfish, whereas **`r NCCShrimp_NCCFish`** cultured a single species of shrimp.
+
+### Information about the species in the survey
+
+In this survey the main species of shrimp is recorded along with other co-cultured species. The following table documents the number of responses for each.
+
+```{r Summary stats on species in farms, include=TRUE}
+######################################################################
+# Create a basic table of data
+######################################################################
+library(kableExtra)
+setorder(RawData_PRICES, cols = "CulturedSpecies")
+
+FarmDetailsDF <- data.frame(cbind(
+  Species = RawData_PRICES[, data.table(table(CulturedSpecies))]$CulturedSpecies,
+  NumberFarms = RawData_PRICES[, data.table(table(CulturedSpecies))]$N,
+  MainSpecies = c(RawData_PRICES[MainSpecies == "Y" & CulturedSpecies == "Macrobrachium rosenbergii", .N],
+                  RawData_PRICES[MainSpecies == "Y" & CulturedSpecies == "Metapenaeus brevicornis", .N],
+                  RawData_PRICES[MainSpecies == "Y" & CulturedSpecies == "Metapenaeus monoceros", .N],
+                  RawData_PRICES[MainSpecies == "Y" & CulturedSpecies == "Penaeus orientalis", .N],
+                  RawData_PRICES[MainSpecies == "Y" & CulturedSpecies == "Peneaus monodon", .N]
+                  ),
+  OtherSpecies = RawData_PRICES[MainSpecies == "N", data.table(table(CulturedSpecies))]$N
+)) 
+
+FarmDetailsTable <- kbl(FarmDetailsDF) %>%
+                    kable_material(c("striped"))
+
+```
+
+The basic information on the number of farms and which species they hold is shown in the table below:
+
+`r FarmDetailsTable`
+
+
+```{r Summary stats on gate prices, include=TRUE}
+##############################################
+# Include some basic stats about gate prices
+##############################################
+MeanGate_PenM_1 <- RawData_PRICES[CulturedSpecies == "Peneaus monodon", mean(ShrimpPrice_1)]
+MeanGate_PenM_2 <- RawData_PRICES[CulturedSpecies == "Peneaus monodon", mean(ShrimpPrice_2)]
+
+MeanGate_PenO_1 <- RawData_PRICES[CulturedSpecies == "Penaeus orientalis", mean(ShrimpPrice_1)]
+MeanGate_PenO_2 <- RawData_PRICES[CulturedSpecies == "Penaeus orientalis", mean(ShrimpPrice_2)]
+
+MeanGate_MacR_1 <- RawData_PRICES[CulturedSpecies == "Macrobrachium rosenbergii", mean(ShrimpPrice_1)]
+MeanGate_MacR_2 <- RawData_PRICES[CulturedSpecies == "Macrobrachium rosenbergii", mean(ShrimpPrice_2)]
+
+MeanGate_MetaB_1 <- RawData_PRICES[CulturedSpecies == "Metapenaeus brevicornis", mean(ShrimpPrice_1)]
+MeanGate_MetaB_2 <- RawData_PRICES[CulturedSpecies == "Metapenaeus brevicornis", mean(ShrimpPrice_2)]
+
+MeanGate_MetaM_1 <- RawData_PRICES[CulturedSpecies == "Metapenaeus monoceros", mean(ShrimpPrice_1)]
+MeanGate_MetaM_2 <- RawData_PRICES[CulturedSpecies == "Metapenaeus monoceros", mean(ShrimpPrice_2)]
+
+StdGate_PenM_1 <- RawData_PRICES[CulturedSpecies == "Peneaus monodon", sd(ShrimpPrice_1)]
+StdGate_PenM_2 <- RawData_PRICES[CulturedSpecies == "Peneaus monodon", sd(ShrimpPrice_2)]
+
+StdGate_PenO_1 <- RawData_PRICES[CulturedSpecies == "Penaeus orientalis", sd(ShrimpPrice_1)]
+StdGate_PenO_2 <- RawData_PRICES[CulturedSpecies == "Penaeus orientalis", sd(ShrimpPrice_2)]
+
+StdGate_MacR_1 <- RawData_PRICES[CulturedSpecies == "Macrobrachium rosenbergii", sd(ShrimpPrice_1)]
+StdGate_MacR_2 <- RawData_PRICES[CulturedSpecies == "Macrobrachium rosenbergii", sd(ShrimpPrice_2)]
+
+StdGate_MetaB_1 <- RawData_PRICES[CulturedSpecies == "Metapenaeus brevicornis", sd(ShrimpPrice_1)]
+StdGate_MetaB_2 <- RawData_PRICES[CulturedSpecies == "Metapenaeus brevicornis", sd(ShrimpPrice_2)]
+
+StdGate_MetaM_1 <- RawData_PRICES[CulturedSpecies == "Metapenaeus monoceros", sd(ShrimpPrice_1)]
+StdGate_MetaM_2 <- RawData_PRICES[CulturedSpecies == "Metapenaeus monoceros", sd(ShrimpPrice_2)]
+
+ConfGate_PenM_1 <- 1.96 * (StdGate_PenM_1)/(sqrt(sum(RawData_PRICES[CulturedSpecies == "Peneaus monodon", .N])))
+ConfGate_PenM_2 <- 1.96 * (StdGate_PenM_2)/(sqrt(sum(RawData_PRICES[CulturedSpecies == "Peneaus monodon", .N])))
+
+ConfGate_PenO_1 <- 1.96 * (StdGate_PenO_1)/(sqrt(sum(RawData_PRICES[CulturedSpecies == "Penaeus orientalis", .N])))
+ConfGate_PenO_2 <- 1.96 * (StdGate_PenO_2)/(sqrt(sum(RawData_PRICES[CulturedSpecies == "Penaeus orientalis", .N])))
+
+ConfGate_MacR_1 <- 1.96 * (StdGate_MacR_1)/(sqrt(sum(RawData_PRICES[CulturedSpecies == "Macrobrachium rosenbergii", .N])))
+ConfGate_MacR_2 <- 1.96 * (StdGate_MacR_2)/(sqrt(sum(RawData_PRICES[CulturedSpecies == "Macrobrachium rosenbergii", .N])))
+
+ConfGate_MetaB_1 <- 1.96 * (StdGate_MetaB_1)/(sqrt(sum(RawData_PRICES[CulturedSpecies == "Metapenaeus brevicornis", .N])))
+ConfGate_MetaB_2 <- 1.96 * (StdGate_MetaB_2)/(sqrt(sum(RawData_PRICES[CulturedSpecies == "Metapenaeus brevicornis", .N])))
+
+ConfGate_MetaM_1 <- 1.96 * (StdGate_MetaM_1)/(sqrt(sum(RawData_PRICES[CulturedSpecies == "Metapenaeus monoceros", .N])))
+ConfGate_MetaM_2 <- 1.96 * (StdGate_MetaM_2)/(sqrt(sum(RawData_PRICES[CulturedSpecies == "Metapenaeus monoceros", .N])))
+
+```
+
+## Effect of Covid19 on Product Prices 
+
+### Mean gate prices
+
+For the shrimp farms the main shrimp stocked is either P. monodon or M. rosengerbii.
+
+Prior to covid19 the mean gate prices for fish were:  
+  
+ P. monodon: **`r MeanGate_PenM_1`** +/- **`r StdGate_PenM_1`**  
+ M. rosengerbii: **`r MeanGate_MacR_1`** +/- **`r StdGate_MacR_1`**  
+ P. orientalis: **`r MeanGate_PenO_1`** +/- **`r StdGate_PenO_1`**  
+ M. brevicornis: **`r MeanGate_MetaB_1`** +/- **`r StdGate_MetaB_1`**  
+ M. monoceros: **`r MeanGate_MetaM_1`** +/- **`r StdGate_MetaM_1`**    
+ 
+After covid19 the mean gate prices for fish were:  
+  
+ P. monodon: **`r MeanGate_PenM_2`** +/- **`r StdGate_PenM_2`**  
+ M. rosengerbii: **`r MeanGate_MacR_2`** +/- **`r StdGate_MacR_2`**  
+ P. orientalis: **`r MeanGate_PenO_2`** +/- **`r StdGate_PenO_2`**  
+ M. brevicornis: **`r MeanGate_MetaB_2`** +/- **`r StdGate_MetaB_2`**  
+ M. monoceros: **`r MeanGate_MetaM_2`** +/- **`r StdGate_MetaM_2`**    
+ 
+The percentage increase in prices were:  
+  P. monodon: **`r (MeanGate_PenM_2 - MeanGate_PenM_1) / MeanGate_PenM_2 * 100`**  
+  M. rosengerbii: **`r (MeanGate_MacR_2 - MeanGate_MacR_1) / MeanGate_MacR_2 * 100`**  
+  P. orientalis: **`r (MeanGate_PenO_2 - MeanGate_PenO_1) / MeanGate_PenO_2 * 100`**  
+  M. brevicornis: **`r (MeanGate_MetaB_2 - MeanGate_MetaB_1) / MeanGate_MetaB_2 * 100`**  
+  M. monoceros: **`r (MeanGate_MetaM_2 - MeanGate_MetaM_1) / MeanGate_MetaM_2 * 100`**  
+
+```{r Statistical analysis of significance of price changes, include=FALSE}
+############################################################
+# Paired t-tests - all selling prices
+############################################################
+PenM_MARKET_TTest <- t.test(
+                          RawData_PRICES[CulturedSpecies == "Peneaus monodon", ShrimpPrice_2],
+                          RawData_PRICES[CulturedSpecies == "Peneaus monodon", ShrimpPrice_1],
+                          alternative = "two.sided",
+                          paired = TRUE,
+                          na.action = na.omit,
+                          var.equal = TRUE)
+MacR_MARKET_TTest <- t.test(
+                          RawData_PRICES[CulturedSpecies == "Macrobrachium rosenbergii", ShrimpPrice_2],
+                          RawData_PRICES[CulturedSpecies == "Macrobrachium rosenbergii", ShrimpPrice_1],
+                          alternative = "two.sided",
+                          paired = TRUE,
+                          na.action = na.omit,
+                          var.equal = TRUE)
+PenO_MARKET_TTest <- t.test(
+                          RawData_PRICES[CulturedSpecies == "Penaeus orientalis", ShrimpPrice_2],
+                          RawData_PRICES[CulturedSpecies == "Penaeus orientalis", ShrimpPrice_1],
+                          alternative = "two.sided",
+                          paired = TRUE,
+                          na.action = na.omit,
+                          var.equal = TRUE)
+MetaB_MARKET_TTest <- t.test(
+                          RawData_PRICES[CulturedSpecies == "Metapenaeus brevicornis", ShrimpPrice_2],
+                          RawData_PRICES[CulturedSpecies == "Metapenaeus brevicornis", ShrimpPrice_1],
+                          alternative = "two.sided",
+                          paired = TRUE,
+                          na.action = na.omit,
+                          var.equal = TRUE)
+MetaM_MARKET_TTest <- t.test(
+                          RawData_PRICES[CulturedSpecies == "Metapenaeus monoceros", ShrimpPrice_2],
+                          RawData_PRICES[CulturedSpecies == "Metapenaeus monoceros", ShrimpPrice_1],
+                          alternative = "two.sided",
+                          paired = TRUE,
+                          na.action = na.omit,
+                          var.equal = TRUE)
+# Get the significance symbols for plotting
+PenM_MARKET_TTest_Symbol <- getSignificanceSymbol(PenM_MARKET_TTest$p.value)
+MacR_MARKET_TTest_Symbol <- getSignificanceSymbol(MacR_MARKET_TTest$p.value)
+PenO_MARKET_TTest_Symbol <- getSignificanceSymbol(PenO_MARKET_TTest$p.value)
+MetaB_MARKET_TTest_Symbol <- getSignificanceSymbol(MetaB_MARKET_TTest$p.value)
+MetaM_MARKET_TTest_Symbol <- getSignificanceSymbol(MetaM_MARKET_TTest$p.value)
+```
+
+### Statistical analysis of the changes of price for shrimp product pre and post COVID
+
+To understand if differences observed were statistically significant a series of paired t-tests were performed on the prices for each shrimp product in turn.
+
+For *Penaeus monodon* Market prices:  
+        P-value: **`r PenM_MARKET_TTest$p.value`**  
+        Test Statistic: **`r PenM_MARKET_TTest$statistic`**  
+        Degrees of Freedom: **`r PenM_MARKET_TTest$parameter`**  
+        Estimated difference in means: **`r PenM_MARKET_TTest$estimate`**  
+
+For *Macrobrachium rosenbergii* Market prices:  
+        P-value: **`r MacR_MARKET_TTest$p.value`**  
+        Test Statistic: **`r MacR_MARKET_TTest$statistic`**  
+        Degrees of Freedom: **`r MacR_MARKET_TTest$parameter`**  
+        Estimated difference in means: **`r MacR_MARKET_TTest$estimate`**  
+        
+For *Penaeus orientalis* Market prices:  
+        P-value: **`r PenO_MARKET_TTest$p.value`**  
+        Test Statistic: **`r PenO_MARKET_TTest$statistic`**  
+        Degrees of Freedom: **`r PenO_MARKET_TTest$parameter`**  
+        Estimated difference in means: **`r PenO_MARKET_TTest$estimate`**  
+        
+For *Metapenaeus brevicornis* catfish Market prices:  
+        P-value: **`r MetaB_MARKET_TTest$p.value`**  
+        Test Statistic: **`r MetaB_MARKET_TTest$statistic`**  
+        Degrees of Freedom: **`r MetaB_MARKET_TTest$parameter`**  
+        Estimated difference in means: **`r MetaB_MARKET_TTest$estimate`**  
+        
+For *Metapenaeus monoceros* catfish Market prices:  
+        P-value: **`r MetaM_MARKET_TTest$p.value`**  
+        Test Statistic: **`r MetaM_MARKET_TTest$statistic`**  
+        Degrees of Freedom: **`r MetaM_MARKET_TTest$parameter`**  
+        Estimated difference in means: **`r MetaM_MARKET_TTest$estimate`**  
+
+```{r Dumbbell plots of prices pre and post covid, include=FALSE}
+#############################################################
+# Plot comparisons of prices pre and post covid
+#############################################################
+############################################################
+# Single plots to create a subplot
+###########################################################
+library(plotly)
+PreMarker = 'square-open'
+PostMarker = 'circle'
+PreMarkerColor = 'rgb(0,0,0)'
+PostMarkerColor = 'rgb(0,0,0)'
+SegmentLineColor = 'rgb(50,50,50)'
+
+DumbbellPlot_PenM_1 <- plot_ly(data = RawData_PRICES[CulturedSpecies == "Peneaus monodon", ], type = 'scatter', mode = 'markers') %>%
+  add_segments(x = ~ShrimpPrice_2, xend = ~ShrimpPrice_1, y = ~FarmNumber, yend = ~FarmNumber, 
+               showlegend = FALSE,
+               name = 'Penaeus monodon',
+               line = list(color = SegmentLineColor)) %>%
+  add_markers(x = ~ShrimpPrice_1,
+              y = ~FarmNumber,
+              name = "Pre-COVID19",
+              showlegend = TRUE,
+              marker = list(symbol = PreMarker,
+                            size = MarkerSize, 
+                          color = PreMarkerColor,
+                          line = list(color = 'rgb(0,0,0)'),
+                          sizemode = 'diameter', opacity = 0.5)) %>%
+  add_markers(name = 'Post-COVID19',
+            showlegend = TRUE,
+              x = ~ShrimpPrice_2,
+            y = ~FarmNumber,
+            marker = list(symbol = PostMarker,
+                          size = MarkerSize, 
+                          color = PostMarkerColor,
+                          line = list(color = 'rgb(0,0,0)'),
+                          sizemode = 'diameter', opacity = 0.5)) %>%
+  layout(
+    shapes = list(
+      list(type = 'line', layer = 'above', 
+                  y0 = 0, y1 = NumberFarms,
+                  x0 = MeanGate_PenM_1, x1 = MeanGate_PenM_1,
+                  line = list(color = 'rgb(20,20,20)', dash = DASH, width = 0.5)),
+      list(type = 'rectangle', layer = 'below',
+           y0 = 0, y1 = NumberFarms,
+           x0 = MeanGate_PenM_2 - ConfGate_PenM_2, x1 = MeanGate_PenM_2 + ConfGate_PenM_2,
+           line = list(color = 'rgba(220,220,220,0.2)'),
+           fillcolor = 'rgb(200,200,200)'),
+      list(type = 'line', layer = 'above', 
+                  y0 = 0, y1 = NumberFarms,
+                  x0 = MeanGate_PenM_2, x1 = MeanGate_PenM_2,
+                  line = list(color = 'rgb(0,0,0)', dash = DOT, width = 0.5)),
+      list(type = 'rectangle', layer = 'below',
+           y0 = 0, y1 = NumberFarms,
+           x0 = MeanGate_PenM_1 - ConfGate_PenM_1, x1 = MeanGate_PenM_1 + ConfGate_PenM_1,
+           line = list(color = 'rgba(200,200,200,0.2)'),
+           fillcolor = 'rgb(200,200,200)')
+      ),
+    annotations = list(text = PenM_MARKET_TTest_Symbol, font = SIGFONT, showarrow = FALSE,
+                         x = MeanGate_PenM_2, xref = "x",
+                         y = 1.05, yref = "paper"),
+    xaxis = list(title = "<I>Penaeus monodon</I><br>", font = AxisTitleFONT,
+                 range = c(RawData_PRICES[CulturedSpecies == "Peneaus monodon", min(ShrimpPrice_1, ShrimpPrice_2)] - 100,
+                           RawData_PRICES[CulturedSpecies == "Peneaus monodon", max(ShrimpPrice_1, ShrimpPrice_2)] + 100), showline = TRUE, showgrid = FALSE),
+    yaxis = list(title = "Farm",showticklabels = FALSE,
+                 range = c(0,NumberFarms + 1), showline = TRUE, showgrid = FALSE)
+  )
+
+DumbbellPlot_MacR_1 <- plot_ly(data = RawData_PRICES[CulturedSpecies == "Macrobrachium rosenbergii", ], type = 'scatter', mode = 'markers') %>%
+  add_segments(x = ~ShrimpPrice_2, xend = ~ShrimpPrice_1, y = ~FarmNumber, yend = ~FarmNumber, 
+               showlegend = FALSE,
+               name = 'Macrobrachium rosenbergii',
+               line = list(color = SegmentLineColor)) %>%
+  add_markers(x = ~ShrimpPrice_1,
+              y = ~FarmNumber,
+              name = "Pre-COVID19",
+              showlegend = FALSE,
+              marker = list(symbol = PreMarker,
+                            size = MarkerSize, 
+                          color = PreMarkerColor,
+                          line = list(color = 'rgb(0,0,0)'),
+                          sizemode = 'diameter', opacity = 0.5)) %>%
+  add_markers(name = 'Post-COVID19',
+            showlegend = FALSE,
+              x = ~ShrimpPrice_2,
+            y = ~FarmNumber,
+            marker = list(symbol = PostMarker,
+                          size = MarkerSize, 
+                          color = PostMarkerColor,
+                          line = list(color = 'rgb(0,0,0)'),
+                          sizemode = 'diameter', opacity = 0.5)) %>%
+  layout(
+    shapes = list(
+      list(type = 'line', layer = 'above', 
+                  y0 = 0, y1 = NumberFarms,
+                  x0 = MeanGate_MacR_1, x1 = MeanGate_MacR_1,
+                  line = list(color = 'rgb(20,20,20)', dash = DASH, width = 0.5)),
+      list(type = 'rectangle', layer = 'below',
+           y0 = 0, y1 = NumberFarms,
+           x0 = MeanGate_MacR_2 - ConfGate_MacR_2, x1 = MeanGate_MacR_2 + ConfGate_MacR_2,
+           line = list(color = 'rgba(220,220,220,0.2)'),
+           fillcolor = 'rgb(200,200,200)'),
+      list(type = 'line', layer = 'above', 
+                  y0 = 0, y1 = NumberFarms,
+                  x0 = MeanGate_MacR_2, x1 = MeanGate_MacR_2,
+                  line = list(color = 'rgb(0,0,0)', dash = DOT, width = 0.5)),
+      list(type = 'rectangle', layer = 'below',
+           y0 = 0, y1 = NumberFarms,
+           x0 = MeanGate_MacR_1 - ConfGate_MacR_1, x1 = MeanGate_MacR_1 + ConfGate_MacR_1,
+           line = list(color = 'rgba(200,200,200,0.2)'),
+           fillcolor = 'rgb(200,200,200)')
+      ),
+    annotations = list(text = MacR_MARKET_TTest_Symbol, font = SIGFONT, showarrow = FALSE,
+                         x = MeanGate_MacR_2, xref = "x",
+                         y = 1.05, yref = "paper"),
+    xaxis = list(title = "<I>Macrobrachium rosenbergii</I><br>", font = AxisTitleFONT,
+                 range = c(RawData_PRICES[CulturedSpecies == "Macrobrachium rosenbergii", min(ShrimpPrice_1, ShrimpPrice_2)] - 100,
+                           RawData_PRICES[CulturedSpecies == "Macrobrachium rosenbergii", max(ShrimpPrice_1, ShrimpPrice_2)] + 100), showline = TRUE, showgrid = FALSE),
+    yaxis = list(title = "Farm",showticklabels = FALSE,
+                 range = c(0,NumberFarms + 1), showline = TRUE, showgrid = FALSE)
+  )
+
+DumbbellPlot_MetaB_1 <- plot_ly(data = RawData_PRICES[CulturedSpecies == "Metapenaeus brevicornis", ], type = 'scatter', mode = 'markers') %>%
+  add_segments(x = ~ShrimpPrice_2, xend = ~ShrimpPrice_1, y = ~FarmNumber, yend = ~FarmNumber, 
+               showlegend = FALSE,
+               name = 'Metapenaeus brevicornis',
+               line = list(color = SegmentLineColor)) %>%
+  add_markers(x = ~ShrimpPrice_1,
+              y = ~FarmNumber,
+              name = "Pre-COVID19",
+              showlegend = FALSE,
+              marker = list(symbol = PreMarker,
+                            size = MarkerSize, 
+                          color = PreMarkerColor,
+                          line = list(color = 'rgb(0,0,0)'),
+                          sizemode = 'diameter', opacity = 0.5)) %>%
+  add_markers(name = 'Post-COVID19',
+            showlegend = FALSE,
+              x = ~ShrimpPrice_2,
+            y = ~FarmNumber,
+            marker = list(symbol = PostMarker,
+                          size = MarkerSize, 
+                          color = PostMarkerColor,
+                          line = list(color = 'rgb(0,0,0)'),
+                          sizemode = 'diameter', opacity = 0.5)) %>%
+  layout(
+    shapes = list(
+      list(type = 'line', layer = 'above', 
+                  y0 = 0, y1 = NumberFarms,
+                  x0 = MeanGate_MetaB_1, x1 = MeanGate_MetaB_1,
+                  line = list(color = 'rgb(20,20,20)', dash = DASH, width = 0.5)),
+      list(type = 'rectangle', layer = 'below',
+           y0 = 0, y1 = NumberFarms,
+           x0 = MeanGate_MetaB_2 - ConfGate_MetaB_2, x1 = MeanGate_MetaB_2 + ConfGate_MetaB_2,
+           line = list(color = 'rgba(220,220,220,0.2)'),
+           fillcolor = 'rgb(200,200,200)'),
+      list(type = 'line', layer = 'above', 
+                  y0 = 0, y1 = NumberFarms,
+                  x0 = MeanGate_MetaB_2, x1 = MeanGate_MetaB_2,
+                  line = list(color = 'rgb(0,0,0)', dash = DOT, width = 0.5)),
+      list(type = 'rectangle', layer = 'below',
+           y0 = 0, y1 = NumberFarms,
+           x0 = MeanGate_MetaB_1 - ConfGate_MetaB_1, x1 = MeanGate_MetaB_1 + ConfGate_MetaB_1,
+           line = list(color = 'rgba(200,200,200,0.2)'),
+           fillcolor = 'rgb(200,200,200)')
+      ),
+    annotations = list(text = MetaB_MARKET_TTest_Symbol, font = SIGFONT, showarrow = FALSE,
+                         x = MeanGate_MetaB_2, xref = "x",
+                         y = 1.05, yref = "paper"),
+    xaxis = list(title = "<I>Metapenaeus brevicornis</I><br>", font = AxisTitleFONT,
+                 range = c(RawData_PRICES[CulturedSpecies == "Metapenaeus brevicornis", min(ShrimpPrice_1, ShrimpPrice_2)] - 100,
+                           RawData_PRICES[CulturedSpecies == "Metapenaeus brevicornis", max(ShrimpPrice_1, ShrimpPrice_2)] + 100), showline = TRUE, showgrid = FALSE),
+    yaxis = list(title = "Farm",showticklabels = FALSE,
+                 range = c(0,NumberFarms + 1), showline = TRUE, showgrid = FALSE)
+  )
+
+DumbbellPlot_MetaM_1 <- plot_ly(data = RawData_PRICES[CulturedSpecies == "Metapenaeus monoceros", ], type = 'scatter', mode = 'markers') %>%
+  add_segments(x = ~ShrimpPrice_2, xend = ~ShrimpPrice_1, y = ~FarmNumber, yend = ~FarmNumber, 
+               showlegend = FALSE,
+               name = 'Metapenaeus monoceros',
+               line = list(color = SegmentLineColor)) %>%
+  add_markers(x = ~ShrimpPrice_1,
+              y = ~FarmNumber,
+              name = "Pre-COVID19",
+              showlegend = FALSE,
+              marker = list(symbol = PreMarker,
+                            size = MarkerSize, 
+                          color = PreMarkerColor,
+                          line = list(color = 'rgb(0,0,0)'),
+                          sizemode = 'diameter', opacity = 0.5)) %>%
+  add_markers(name = 'Post-COVID19',
+            showlegend = FALSE,
+              x = ~ShrimpPrice_2,
+            y = ~FarmNumber,
+            marker = list(symbol = PostMarker,
+                          size = MarkerSize, 
+                          color = PostMarkerColor,
+                          line = list(color = 'rgb(0,0,0)'),
+                          sizemode = 'diameter', opacity = 0.5)) %>%
+  layout(
+    shapes = list(
+      list(type = 'line', layer = 'above', 
+                  y0 = 0, y1 = NumberFarms,
+                  x0 = MeanGate_MetaM_1, x1 = MeanGate_MetaM_1,
+                  line = list(color = 'rgb(20,20,20)', dash = DASH, width = 0.5)),
+      list(type = 'rectangle', layer = 'below',
+           y0 = 0, y1 = NumberFarms,
+           x0 = MeanGate_MetaM_2 - ConfGate_MetaM_2, x1 = MeanGate_MetaM_2 + ConfGate_MetaM_2,
+           line = list(color = 'rgba(220,220,220,0.2)'),
+           fillcolor = 'rgb(200,200,200)'),
+      list(type = 'line', layer = 'above', 
+                  y0 = 0, y1 = NumberFarms,
+                  x0 = MeanGate_MetaM_2, x1 = MeanGate_MetaM_2,
+                  line = list(color = 'rgb(0,0,0)', dash = DOT, width = 0.5)),
+      list(type = 'rectangle', layer = 'below',
+           y0 = 0, y1 = NumberFarms,
+           x0 = MeanGate_MetaM_1 - ConfGate_MetaM_1, x1 = MeanGate_MetaM_1 + ConfGate_MetaM_1,
+           line = list(color = 'rgba(200,200,200,0.2)'),
+           fillcolor = 'rgb(200,200,200)')
+      ),
+    annotations = list(text = MetaM_MARKET_TTest_Symbol, font = SIGFONT, showarrow = FALSE,
+                         x = MeanGate_MetaM_2, xref = "x",
+                         y = 1.05, yref = "paper"),
+    xaxis = list(title = "<I>Metapenaeus monoceros</I><br>", font = AxisTitleFONT,
+                 range = c(RawData_PRICES[CulturedSpecies == "Metapenaeus monoceros", min(ShrimpPrice_1, ShrimpPrice_2)] - 100,
+                           RawData_PRICES[CulturedSpecies == "Metapenaeus monoceros", max(ShrimpPrice_1, ShrimpPrice_2)] + 100), showline = TRUE, showgrid = FALSE),
+    yaxis = list(title = "Farm",showticklabels = FALSE,
+                 range = c(0,NumberFarms + 1), showline = TRUE, showgrid = FALSE)
+  )
+
+DumbbellPlot_ShrimpMarket_Subplot <- subplot(
+                                              DumbbellPlot_PenM_1,
+                                              DumbbellPlot_MacR_1,
+                                              DumbbellPlot_MetaB_1,
+                                              DumbbellPlot_MetaM_1,
+                                              titleX = TRUE, titleY = TRUE, shareY = TRUE, shareX = FALSE,
+                                              margin = 0.04,
+                                              nrows = 1) %>% 
+                                              layout(legend = list(bordercolor = 'black', borderwidth = 0.5, orientation = 'h',
+                                                                   x = 0.5, xanchor = 'center', 
+                                                                   y = 1.2, yanchor = 'top',
+                                                                   font = LegendFONT,
+                                                                   tracegroupgap = 2), 
+                                                     annotations = list(text = "<b>Sales Price (BDT/kg)</b>", showarrow = FALSE, 
+                                                                        x = 0.5, xref = 'paper', xanchor = 'center',
+                                                                        y = -0.25, yref = 'paper', yanchor = 'bottom',
+                                                                        font = list(family = 'Arial', size = 14)),
+                                                     margin = list(l = 10, r = 10, t = 10, b = 10)
+                                              )
+orca(DumbbellPlot_ShrimpMarket_Subplot, "ShrimpMARKET_Dumbell.svg")
+```
+
+`r DumbbellPlot_ShrimpMarket_Subplot`
+
+```{r Shrimp Prices and CoCulturing, include=TRUE}
+#################################################################
+# Attempt to determine if the difference in main shrimp price
+# was affected by co-culturing with other species
+#################################################################
+ShrimpDiffDF_ALL <- data.frame(
+  Species = RawData_PRICES$CulturedSpecies,
+  FarmSize = RawData_PRICES$FarmSize_Decimal,
+  MainSpeciesYN = RawData_PRICES$MainSpecies,
+  DiffPrice = RawData_PRICES$ShrimpPrice_1 - RawData_PRICES$ShrimpPrice_2,
+  PerChange = (((RawData_PRICES$ShrimpPrice_1 - RawData_PRICES$ShrimpPrice_2)/RawData_PRICES$ShrimpPrice_1) * 100),
+  CoCultureYN = RawData_PRICES$ShrimpCoCulture,
+  FishCoCultureYN = RawData_PRICES$FinfishCoCulture,
+  NoFinfish = RawData_PRICES$NoFinfish,
+  SpeciesPresent = RawData_PRICES$TotalSpecies
+)
+ShrimpDiffDF_Pen <- subset(ShrimpDiffDF_ALL, (ShrimpDiffDF_ALL$MainSpeciesYN == "Y" & ShrimpDiffDF_ALL$Species == "Peneaus monodon"))
+ShrimpDiffDF_Mac <- subset(ShrimpDiffDF_ALL, (ShrimpDiffDF_ALL$MainSpeciesYN == "Y" & ShrimpDiffDF_ALL$Species == "Macrobrachium rosenbergii"))
+ShrimpDiffDF <- subset(ShrimpDiffDF_ALL, ShrimpDiffDF_ALL$MainSpeciesYN == "Y")
+
+###########################################################################################
+#
+# Do multivariate analysis on the percentage change for main species crop
+#
+###########################################################################################
+ShrimpDiffGLM <- glm(formula = PerChange ~ Species + FarmSize + CoCultureYN + FishCoCultureYN + NoFinfish + SpeciesPresent,
+                    family = 'gaussian',
+                    data = ShrimpDiffDF)
+print(summary(ShrimpDiffGLM))
+
+ShrimpDiffGLM_FINYN <- glm(formula = PerChange ~ FishCoCultureYN + CoCultureYN + Species + FarmSize,
+                    family = 'gaussian',
+                    data = ShrimpDiffDF)
+print(summary(ShrimpDiffGLM_FINYN))
+
+ShrimpDiffGLM_Pen <- glm(formula = PerChange ~ CoCultureYN + FishCoCultureYN + NoFinfish + SpeciesPresent,
+                    family = 'gaussian',
+                    data = ShrimpDiffDF_Pen)
+print(summary(ShrimpDiffGLM_Pen))
+
+ShrimpDiffGLM_Mac <- glm(formula = PerChange ~ CoCultureYN  + FishCoCultureYN + NoFinfish + SpeciesPresent,
+                    family = 'gaussian',
+                    data = ShrimpDiffDF_Mac)
+print(summary(ShrimpDiffGLM_Mac))
+
+#########################################################
+# Suggests that co-culture reduces the price differences
+#
+# Check out with boxplots and co-efficient plots
+##########################################################
+library(plotly)
+# Co-culture with other shrimp species = boxplot
+
+Diff_ShrimpCoC_Boxplot <- plot_ly(type = 'box', data = ShrimpDiffDF) %>%
+  add_trace(y = ~PerChange,
+            x = ~CoCultureYN)
+
+Diff_FinfishCoC_Boxplot <- plot_ly(type = 'box', data = ShrimpDiffDF) %>%
+  add_trace(y = ~PerChange,
+            x = ~FishCoCultureYN)
+
+###########################################################################
+#
+# Correlation between percentage change and the number of finfish cocultured
+#
+#############################################################################
+
+# All species
+Diff_NoFinfishCoC_Correlation <- lm(PerChange~NoFinfish, data = ShrimpDiffDF)
+Diff_NoFinfishCoC_CorrTest <- cor.test(ShrimpDiffDF$PerChange,
+                                       ShrimpDiffDF$NoFinfish,
+                                       method = "pearson")
+Diff_NoFinfishCoC <- plot_ly(type = 'scatter', mode = 'markers', data = ShrimpDiffDF) %>%
+  add_trace(y = ~PerChange,
+            x = ~NoFinfish) %>%
+  add_trace( mode = 'line',
+              y = c(Diff_NoFinfishCoC_Correlation$coefficients[1], 
+                  (max(ShrimpDiffDF$NoFinfish) * Diff_NoFinfishCoC_Correlation$coefficients[2]) + Diff_NoFinfishCoC_Correlation$coefficients[1]),
+            x = c(0, max(ShrimpDiffDF$NoFinfish) ))
+
+# Repeat for just Pen monodon as the main species
+Diff_NoFinfishCoC_Correlation_Pen <- lm(PerChange~NoFinfish, data = ShrimpDiffDF_Pen)
+Diff_NoFinfishCoC_CorrTest_Pen <- cor.test(ShrimpDiffDF_Pen$PerChange,
+                                       ShrimpDiffDF_Pen$NoFinfish,
+                                       method = "pearson")
+Diff_NoFinfishCoC_Pen <- plot_ly(type = 'scatter', mode = 'markers', data = ShrimpDiffDF_Pen) %>%
+  add_trace(y = ~PerChange,
+            x = ~NoFinfish) %>%
+  add_trace( mode = 'line',
+              y = c(Diff_NoFinfishCoC_Correlation_Pen$coefficients[1], 
+                  (max(ShrimpDiffDF_Pen$NoFinfish) * Diff_NoFinfishCoC_Correlation_Pen$coefficients[2]) + Diff_NoFinfishCoC_Correlation_Pen$coefficients[1]),
+            x = c(0, max(ShrimpDiffDF_Pen$NoFinfish) ))
+
+# Repeat for just Macrobrachium as the main species
+Diff_NoFinfishCoC_Correlation_Mac <- lm(PerChange~NoFinfish, data = ShrimpDiffDF_Mac)
+Diff_NoFinfishCoC_CorrTest_Mac <- cor.test(ShrimpDiffDF_Mac$PerChange,
+                                       ShrimpDiffDF_Mac$NoFinfish,
+                                       method = "pearson")
+Diff_NoFinfishCoC_Mac <- plot_ly(type = 'scatter', mode = 'markers', data = ShrimpDiffDF_Mac) %>%
+  add_trace(y = ~PerChange,
+            x = ~NoFinfish) %>%
+  add_trace( mode = 'line',
+              y = c(Diff_NoFinfishCoC_Correlation_Mac$coefficients[1], 
+                  (max(ShrimpDiffDF_Mac$NoFinfish) * Diff_NoFinfishCoC_Correlation_Mac$coefficients[2]) + Diff_NoFinfishCoC_Correlation_Mac$coefficients[1]),
+            x = c(0, max(ShrimpDiffDF_Mac$NoFinfish) ))
+
+####################################################################################
+#
+# Correlation between percentage change and the total number of species cocultured
+#
+####################################################################################
+
+Diff_NoSpeciesCoC_Correlation <- lm(PerChange~SpeciesPresent, data = ShrimpDiffDF)
+Diff_NoSpeciesCoC_CorrTest <- cor.test(ShrimpDiffDF$PerChange,
+                                       ShrimpDiffDF$SpeciesPresent,
+                                       method = "pearson")
+Diff_NoSpeciesCoC <- plot_ly(type = 'scatter', mode = 'markers', data = ShrimpDiffDF) %>%
+  add_trace(y = ~PerChange,
+            x = ~SpeciesPresent) %>%
+  add_trace( mode = 'line',
+              y = c(Diff_NoSpeciesCoC_Correlation$coefficients[1], 
+                  (max(ShrimpDiffDF$SpeciesPresent) * Diff_NoSpeciesCoC_Correlation$coefficients[2]) + Diff_NoSpeciesCoC_Correlation$coefficients[1]),
+            x = c(0, max(ShrimpDiffDF$SpeciesPresent) ))
+
+Diff_ShrimpCoC_Boxplot_Joined <- plot_ly(type = 'box', data = ShrimpDiffDF) %>%
+  add_trace(y = ~PerChange,
+            x = ~CoCultureYN) %>%
+  add_trace(y = ~PerChange,
+            x = ~FishCoCultureYN) %>%
+  layout(boxplot = 'grouped',
+        xaxis = list(title = ""),
+         yaxis = list(title = "Percentage decrease in main crop price after COVID (BDT/kg"))
+
+Diff_SpeciesFinFishCoC_Boxplot <- plot_ly(type = 'box', data = ShrimpDiffDF) %>%
+  add_trace(y = ~DiffPrice,
+            x = ~CoCultureYN) %>%
+  add_trace(y = ~DiffPrice,
+            x = ~FishCoCultureYN) %>%
+  layout(boxplot = 'grouped',
+        xaxis = list(title = ""),
+         yaxis = list(title = "Percentage decrease in main crop price after COVID (BDT/kg"))
+```
+
+### Boxplot of the difference in main shrimp price per farm and whether co-culturing of shrimp was adopted or not
+  
+`r Diff_ShrimpCoC_Boxplot`
+
+### Boxplot of the difference in main shrimp price per farm and whether co-culturing of finfish was adopted or not
+  
+`r Diff_FinfishCoC_Boxplot`
+
+### Boxplot with both traces
+
+`r Diff_ShrimpCoC_Boxplot_Joined`
+
+### Scatter plot of the difference in the main shrimp price and the number of finfish species co-cultured in the ponds
+  
+`r Diff_NoFinfishCoC`
+
+Here just records for Peneaus monodon as the main species are used:  
+
+`r Diff_NoFinfishCoC_Pen`  
+
+Here just records for Macrobrachium rosenbergii as the main species are used:  
+
+`r Diff_NoFinfishCoC_Mac`
+
+
+### Scatter plot of the difference in the main shrimp price and the total number of species co-cultured in the ponds
+  
+  `r Diff_NoSpeciesCoC`
+
+### Boxplot of the difference in main shrimp price per farm based on species and whether co-culturing of shrimp was adopted or not
+
+`r Diff_SpeciesFinFishCoC_Boxplot`
+
+```{r Overall Yields, include=TRUE}
+######################################################################
+# In this section we consider the overall yield (production * price)
+# and the difference before and after COVID
+#
+# This is the overall pond economic yield
+######################################################################
+RawData_FINFISH[!is.na(CulturedSpecies), Main_Yield_1 := (Main_Prod * Main_1)]
+RawData_FINFISH[!is.na(CulturedSpecies), Main_Yield_2 := (Main_Prod * Main_2)]
+
+RawData_FINFISH[!is.na(CulturedSpecies), CoShrimp_Yield_1 := (CoShrimp_Prod * CoShrimp_1)]
+RawData_FINFISH[!is.na(CulturedSpecies), CoShrimp_Yield_2 := (CoShrimp_Prod * CoShrimp_2)]
+
+RawData_FINFISH[!is.na(SWFin_Coculture), SWFin_Yield_1 := (SWFin_Prod * SWFin_1)]
+RawData_FINFISH[!is.na(SWFin_Coculture), SWFin_Yield_2 := (SWFin_Prod * SWFin_2)]
+
+RawData_FINFISH[!is.na(FWFin_Coculture), FWFin_Yield_1 := (FWFin_Prod * FWFin_1)]
+RawData_FINFISH[!is.na(FWFin_Coculture), FWFin_Yield_2 := (FWFin_Prod * FWFin_2)]
+
+Pre_COVID_Yield <- RawData_FINFISH[, sum(Main_Yield_1, CoShrimp_Yield_1, SWFin_Yield_1, FWFin_Yield_1, na.rm = TRUE), by = FarmID]
+
+Post_COVID_Yield <- RawData_FINFISH[, sum(Main_Yield_2, CoShrimp_Yield_2, SWFin_Yield_2, FWFin_Yield_2, na.rm = TRUE), by = FarmID]
+
+Yield_Table <- merge(Pre_COVID_Yield, Post_COVID_Yield, by = c("FarmID"))
+setnames(Yield_Table, c("V1.x", "V1.y"), c("Pre_COVID_Yield", "Post_COVID_Yield"))
+
+Yield_Table[, Diff_COVID_Yield := Pre_COVID_Yield - Post_COVID_Yield]
+Yield_Table[, PerDiff_COVID_Yield := ((Pre_COVID_Yield - Post_COVID_Yield)/Pre_COVID_Yield) * 100]
+Farm_Table <- RawData_FINFISH[!is.na(FarmSize_Decimal), FarmSize_Decimal, by = FarmID]
+
+Yield_Table <- merge(Yield_Table, Farm_Table, by = c("FarmID"))
+
+CoCulture_Table <- RawData_PRICES[MainSpecies == "Y", .(FarmID, ShrimpCoCulture, FinfishCoCulture, NoFinfish, TotalSpecies)]
+Yield_Table <- merge(Yield_Table, CoCulture_Table, by = c("FarmID"))
+
+##################################################################################
+# Box plots
+##################################################################################
+
+# Compare the pre and post total yields = difference
+YieldPrePost_Boxplot <- plot_ly(type = 'box', data = Yield_Table) %>%
+  add_trace(y = ~Pre_COVID_Yield,
+            x = "Pre_COVID") %>%
+  add_trace(y = ~Post_COVID_Yield,
+            x = "Post_COVID") %>%
+  add_trace(y = ~Diff_COVID_Yield,
+            x = "Difference") %>%
+  layout(boxmode = 'group')
+
+YieldPrePostVSShrimpCoC_Boxplot <- plot_ly(type = 'box', data = Yield_Table) %>%
+  add_trace(y = ~Pre_COVID_Yield,
+            x = ~ShrimpCoCulture) %>%
+  add_trace(y = ~Post_COVID_Yield,
+            x = ~ShrimpCoCulture) %>%
+  add_trace(y = ~Diff_COVID_Yield,
+            x = ~ShrimpCoCulture) %>%
+  layout(boxmode = 'group')
+
+YieldPrePostVSFinfishCoC_Boxplot <- plot_ly(type = 'box', data = Yield_Table) %>%
+  add_trace(y = ~Pre_COVID_Yield,
+            x = ~FinfishCoCulture) %>%
+  add_trace(y = ~Post_COVID_Yield,
+            x = ~FinfishCoCulture) %>%
+  add_trace(y = ~Diff_COVID_Yield,
+            x = ~FinfishCoCulture) %>%
+  layout(boxmode = 'group')
+
+YieldPercent_Boxplot <- plot_ly(type = 'box', data = Yield_Table) %>%
+  add_trace(y = ~PerDiff_COVID_Yield,
+            x = ~ShrimpCoCulture) %>%
+  add_trace(y = ~PerDiff_COVID_Yield,
+            x = ~FinfishCoCulture) %>%
+  layout(boxmode = 'group')
+
+
+##################################################################################
+# Scatter plots
+##################################################################################
+Yield_FarmSize_Correlation <- lm(Diff_COVID_Yield~FarmSize_Decimal, data = Yield_Table)
+Yield_FarmSize_CorrTest <- cor.test(Yield_Table$Diff_COVID_Yield,
+                                       Yield_Table$FarmSize_Decimal,
+                                       method = "pearson")
+Yield_FarmSize_Scatter <- plot_ly(type = 'scatter', mode = 'markers', data = Yield_Table) %>%
+  add_trace(y = ~Diff_COVID_Yield,
+            x = ~FarmSize_Decimal) %>%
+  add_trace( mode = 'line',
+              y = c(Yield_FarmSize_Correlation$coefficients[1], 
+                  (max(Yield_Table$FarmSize_Decimal) * Yield_FarmSize_Correlation$coefficients[2]) + Yield_FarmSize_Correlation$coefficients[1]),
+            x = c(0, max(Yield_Table$FarmSize_Decimal) ))
+
+```
+
+### Understanding the effect of COVID on the total yield from the farm
+
+`r YieldPrePost_Boxplot`
+
+`r YieldPrePostVSShrimpCoC_Boxplot`
+
+`r YieldPrePostVSFinfishCoC_Boxplot`
+
+`r YieldPercent_Boxplot`
+
+#### Based on the size of the farm
+
+Here the total yield is plotted against the size of farm (in decimals).
+
+`r Yield_FarmSize_Scatter`
+
+```{r Generalised linear model for Total Yield, include=TRUE}
+########################################################################
+#
+# Look at a generalised linear model
+#
+########################################################################
+Yield_GLM <- glm(Diff_COVID_Yield~FarmSize_Decimal + ShrimpCoCulture + FinfishCoCulture,
+                 family = 'gaussian',
+                 data = Yield_Table)
+print(summary(Yield_GLM))
+
+print(Yield_GLM$coefficients)
+with(summary(Yield_GLM), 1 - deviance/null.deviance)
+
+Yield_GLM2 <- glm(Diff_COVID_Yield~FarmSize_Decimal + FinfishCoCulture,
+                 family = 'gaussian',
+                 data = Yield_Table)
+print(summary(Yield_GLM2))
+
+print(Yield_GLM2$coefficients)
+with(summary(Yield_GLM2), 1 - deviance/null.deviance)
+
+Yield_GLM3 <- glm(Diff_COVID_Yield~FarmSize_Decimal + ShrimpCoCulture + FinfishCoCulture,
+                 family = 'gaussian',
+                 data = Yield_Table)
+print(summary(Yield_GLM3))
+
+print(Yield_GLM3$coefficients)
+with(summary(Yield_GLM3), 1 - deviance/null.deviance)
+
+Yield_GLM4 <- glm(Diff_COVID_Yield~FarmSize_Decimal + FinfishCoCulture,
+                 family = 'gaussian',
+                 data = Yield_Table)
+print(summary(Yield_GLM4))
+
+print(Yield_GLM4$coefficients)
+with(summary(Yield_GLM4), 1 - deviance/null.deviance)
+```
