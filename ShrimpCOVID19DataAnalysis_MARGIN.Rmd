@@ -1,0 +1,1453 @@
+---
+title: "ShrimpCovAquaProfitMargin"
+author: "Richard Heal"
+date: "2/7/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE)
+
+#######################################################################
+# Load in the shrimp price data
+#######################################################################
+DataFile <- "COVIDAquaculture_ShrimpData_PRICES.csv"
+RawData_PRICES <- read.csv(DataFile, header = TRUE, skip = 0, stringsAsFactors = TRUE)
+FinDataFile <- "COVIDAquaculture_ShrimpData_FINFISH_PRICES_MARGIN.csv"
+RawData_FINFISH <- read.csv(FinDataFile, header = TRUE, skip = 0, stringsAsFactors = TRUE)
+
+#######################################################################
+# Load in the shrimp farm costs - these are the production cycle costs
+# 
+# Water supply, seed, feed, elec, medicines, transport and labour
+#######################################################################
+DataFile <- "COVIDAquaculture_ShrimpData_MARGIN.csv"
+RawData_COSTS <- read.csv(DataFile, header = TRUE, skip = 0, stringsAsFactors = TRUE)
+
+#######################################################################
+# Make a numeric indicator
+#######################################################################
+library(data.table)
+RawData_PRICES <- setDT(RawData_PRICES)
+RawData_PRICES[, FarmNumber := as.integer(sub("F", "", FarmID))]
+
+RawData_FINFISH <- setDT(RawData_FINFISH)
+RawData_FINFISH[, FarmNumber := as.integer(sub("F", "", FarmID))]
+
+RawData_COSTS <- setDT(RawData_COSTS)
+RawData_COSTS[, FarmNumber := as.integer(sub("F", "", FarmID))]
+
+# Trim the trailing white space from species
+RawData_PRICES[, CulturedSpecies := trimws(CulturedSpecies, which = c("right"))]
+
+# Set to NA the values of 0 in the costs spreadsheet - these will be ignored
+RawData_COSTS[WaterS_1 == 0 | WaterS_2 == 0, WaterS_1 := NA]
+RawData_COSTS[WaterS_1 == 0 | WaterS_2 == 0, WaterS_2 := NA]
+
+RawData_COSTS[Seed_1 == 0 | Seed_2 == 0, Seed_1 := NA]
+RawData_COSTS[Seed_1 == 0 | Seed_2 == 0, Seed_2 := NA]
+
+RawData_COSTS[Feed_1 == 0 | Feed_2 == 0, Feed_1 := NA]
+RawData_COSTS[Feed_1 == 0 | Feed_2 == 0, Feed_2 := NA]
+
+RawData_COSTS[Lab_1 == 0 | Lab_2 == 0, Lab_1 := NA]
+RawData_COSTS[Lab_1 == 0 | Lab_2 == 0, Lab_2 := NA]
+
+RawData_COSTS[Elec_1 == 0 | Elec_2 == 0, Elec_1 := NA]
+RawData_COSTS[Elec_1 == 0 | Elec_2 == 0, Elec_2 := NA]
+
+RawData_COSTS[Medic_1 == 0 | Medic_2 == 0, Medic_1 := NA]
+RawData_COSTS[Medic_1 == 0 | Medic_2 == 0, Medic_2 := NA]
+
+RawData_COSTS[Trans_1 == 0 | Trans_2 == 0, Trans_1 := NA]
+RawData_COSTS[Trans_1 == 0 | Trans_2 == 0, Trans_2 := NA]
+
+# Get the number of farms
+NumberFarms <- uniqueN(RawData_PRICES, by = c("FarmID"))
+
+######################################################################
+# In this section we consider the overall yield (production * price)
+# and the difference before and after COVID
+#
+# This is the overall pond economic yield so we have to factor in size of farm
+#
+# NEED TO CHECK THIS IS SUMMING ALL THE FINFISH
+######################################################################
+RawData_FINFISH[!is.na(CulturedSpecies), Main_Yield_1 := (Main_Prod * Main_1 * FarmSize_Decimal)]
+RawData_FINFISH[!is.na(CulturedSpecies), Main_Yield_2 := (Main_Prod * Main_2 * FarmSize_Decimal)]
+
+RawData_FINFISH[!is.na(CulturedSpecies), CoShrimp_Yield_1 := (CoShrimp_Prod * CoShrimp_1 * FarmSize_Decimal)]
+RawData_FINFISH[!is.na(CulturedSpecies), CoShrimp_Yield_2 := (CoShrimp_Prod * CoShrimp_2 * FarmSize_Decimal)]
+
+RawData_FINFISH[!is.na(SWFin_Coculture), SWFin_Yield_1 := (SWFin_Prod * SWFin_1 * FarmSize_Decimal)]
+RawData_FINFISH[!is.na(SWFin_Coculture), SWFin_Yield_2 := (SWFin_Prod * SWFin_2 * FarmSize_Decimal)]
+
+RawData_FINFISH[!is.na(FWFin_Coculture), FWFin_Yield_1 := (FWFin_Prod * FWFin_1 * FarmSize_Decimal)]
+RawData_FINFISH[!is.na(FWFin_Coculture), FWFin_Yield_2 := (FWFin_Prod * FWFin_2 * FarmSize_Decimal)]
+
+Pre_COVID_Yield <- RawData_FINFISH[, sum(Main_Yield_1, CoShrimp_Yield_1, SWFin_Yield_1, FWFin_Yield_1, na.rm = TRUE), by = c("FarmID")]
+Post_COVID_Yield <- RawData_FINFISH[, sum(Main_Yield_2, CoShrimp_Yield_2, SWFin_Yield_2, FWFin_Yield_2, na.rm = TRUE), by = c("FarmID")]
+
+Yield_Table <- merge(Pre_COVID_Yield, Post_COVID_Yield, by = c("FarmID"))
+setnames(Yield_Table, c("V1.x", "V1.y"), c("Pre_COVID_Yield", "Post_COVID_Yield"))
+
+Yield_Table[, Diff_COVID_Yield := Pre_COVID_Yield - Post_COVID_Yield]
+Yield_Table[, PerDiff_COVID_Yield := ((Pre_COVID_Yield - Post_COVID_Yield)/Pre_COVID_Yield) * 100]
+Farm_Table <- unique(RawData_FINFISH[, FarmSize_Decimal, by = FarmID], by = c("FarmID"))
+
+Yield_Table <- merge(Yield_Table, Farm_Table, by = c("FarmID"))
+
+CoCulture_Table <- RawData_PRICES[MainSpecies == "Y", .(FarmID, ShrimpCoCulture, FinfishCoCulture, NoFinfish, TotalSpecies)]
+Yield_Table <- merge(Yield_Table, CoCulture_Table, by = c("FarmID"))
+setorder(Yield_Table, "FarmID")
+
+# Farms practicing co-culture shrimp species
+NumberCoCultureShrimpFarms <- uniqueN(RawData_PRICES[ShrimpCoCulture == "Y", .N, FarmID], by = c("FarmID"))
+NumberSingleCultureShrimpFarms <- uniqueN(RawData_PRICES[ShrimpCoCulture == "N", .N, FarmID], by = c("FarmID"))
+
+# Farms co-culturing shrimp and finfish
+NumberCoCultureShrimpFinfishFarms <- uniqueN(RawData_PRICES[FinfishCoCulture == "Y", .N, FarmID], by = c("FarmID"))
+NumberNoFinfishCultureShrimpFarms <- uniqueN(RawData_PRICES[FinfishCoCulture == "N", .N, FarmID], by = c("FarmID"))
+
+# Overall for co-culture
+CCShrimp_CCFish <- uniqueN(RawData_PRICES[ShrimpCoCulture == "Y" & FinfishCoCulture == "Y", .N, FarmID], by = c("FarmID"))
+CCShrimp_NCCFish <- uniqueN(RawData_PRICES[ShrimpCoCulture == "Y" & FinfishCoCulture == "N", .N, FarmID], by = c("FarmID"))
+NCCShrimp_CCFish <- uniqueN(RawData_PRICES[ShrimpCoCulture == "N" & FinfishCoCulture == "Y", .N, FarmID], by = c("FarmID"))
+NCCShrimp_NCCFish <- uniqueN(RawData_PRICES[ShrimpCoCulture == "N" & FinfishCoCulture == "N", .N, FarmID], by = c("FarmID"))
+  
+
+#########################################
+# Default plot parameters
+########################################
+PreMarker = 'square-open'
+PostMarker = 'circle'
+PreMarkerColor = 'rgb(0,0,0)'
+PostMarkerColor = 'rgb(0,0,0)'
+SegmentLineColor = 'rgb(50,50,50)'
+AxisTitleFONT = list(family = "Arial", size = 12, color = 'black')
+LegendFONT = list(family = "Arial", size = 12, color = 'black')
+SIGFONT = list(family = "Arial", size = 12, color = 'black')
+DASH = "5px"
+DOT = "2px"
+MarkerSize <- 7
+
+source('~/GitHubRepositoryProjects/BangladeshCOVID19Aqua/GetSignificanceSymbol.R')
+```
+
+## Economic Margins Pre and Post COVID
+
+This analysis is looking at the total yield from the farms, the costs pre and post COVID and the overall margin.
+
+```{r Plot the total yields, include=TRUE}
+library(plotly)
+
+# Plot the Percentage difference - box plot
+Yield_BoxPlot <- plot_ly(type = 'box', data = Yield_Table) %>%
+  add_trace(y = ~ PerDiff_COVID_Yield) 
+
+Yield_BoxPlot_Shrimp <- plot_ly(type = 'box', data = Yield_Table) %>%
+  add_trace(y = ~PerDiff_COVID_Yield,
+            x = ~ShrimpCoCulture) %>%
+  layout(boxmode = 'group')
+
+Yield_BoxPlot_Finfish <- plot_ly(type = 'box', data = Yield_Table) %>%
+  add_trace(y = ~PerDiff_COVID_Yield,
+            x = ~FinfishCoCulture) %>%
+  layout(boxmode = 'group')
+
+# Plot the percentage difference - scatter plot vs farm size
+
+Yield_Corr_FarmSize <- plot_ly(type = 'scatter', mode = 'markers', data = Yield_Table) %>%
+  add_trace(x = ~FarmSize_Decimal,
+            y = ~PerDiff_COVID_Yield)
+
+Yield_Corr_NoSpecies <- plot_ly(type = 'scatter', mode = 'markers', data = Yield_Table) %>%
+  add_trace(x = ~TotalSpecies,
+            y = ~PerDiff_COVID_Yield)
+
+Yield_Corr_NoFinSpecies <- plot_ly(type = 'scatter', mode = 'markers', data = Yield_Table) %>%
+  add_trace(x = ~NoFinfish,
+            y = ~PerDiff_COVID_Yield)
+```
+
+`r Yield_BoxPlot`
+
+`r Yield_BoxPlot_Shrimp`
+
+`r Yield_BoxPlot_Finfish`
+
+`r Yield_Corr_FarmSize`
+
+`r Yield_Corr_NoSpecies`
+
+`r Yield_Corr_NoFinSpecies`
+
+
+```{r Calculate the Production Cycle Costs Pre and Post Covid, include=TRUE}
+####################################################################################
+#
+# In this section the production cycle costs are calculated
+#
+# Because not all farms declare costs for each category we need to compare differences
+#
+#####################################################################################
+RawData_COSTS[, ProdCost_1 := rowSums(.SD, na.rm = TRUE), .SDcols = c("WaterS_1", "Seed_1", "Feed_1", "Lab_1", "Elec_1", "Medic_1", "Trans_1")]
+RawData_COSTS[, ProdCost_2 := rowSums(.SD, na.rm = TRUE), .SDcols = c("WaterS_2", "Seed_2", "Feed_2", "Lab_2", "Elec_2", "Medic_2", "Trans_2")]
+RawData_COSTS[, DiffProdCost := ProdCost_2 - ProdCost_1]
+
+# Plot the data
+# Plot the Percentage difference - box plot
+CostDifferences_BoxPlot <- plot_ly(type = 'box', data = RawData_COSTS) %>%
+  add_trace(y = ~ DiffProdCost) 
+
+```
+
+### Production cost differences
+
+For each farm some of the production costs pre and post COVID were given. Note that not all farms gave all the costs and therefore in this section the difference in costs is taken.
+
+#### Mean Cost of Water
+
+The mean cost of water prior to covid was: **`r RawData_COSTS[, mean(WaterS_1, na.rm = TRUE)]`** BDT  
+The mean cost of water after to covid was: **`r RawData_COSTS[, mean(WaterS_2, na.rm = TRUE)]`** BDT
+
+#### Mean Cost of Stock Seed
+
+The mean cost of water prior to covid was: **`r RawData_COSTS[, mean(Seed_1, na.rm = TRUE)]`** BDT  
+The mean cost of water after to covid was: **`r RawData_COSTS[, mean(Seed_2, na.rm = TRUE)]`** BDT
+
+#### Mean Cost of Feed
+
+The mean cost of water prior to covid was: **`r RawData_COSTS[, mean(Feed_1, na.rm = TRUE)]`** BDT  
+The mean cost of water after to covid was: **`r RawData_COSTS[, mean(Feed_2, na.rm = TRUE)]`** BDT
+
+#### Mean Cost of Labour
+
+The mean cost of water prior to covid was: **`r RawData_COSTS[, mean(Lab_1, na.rm = TRUE)]`** BDT  
+The mean cost of water after to covid was: **`r RawData_COSTS[, mean(Lab_2, na.rm = TRUE)]`** BDT
+
+#### Mean Electricity Costs
+
+The mean cost of electricity prior to covid was: **`r RawData_COSTS[, mean(Elec_1, na.rm = TRUE)]`** BDT  
+The mean cost of electricity after to covid was: **`r RawData_COSTS[, mean(Elec_2, na.rm = TRUE)]`** BDT
+
+#### Mean Medicinal Costs
+
+The mean cost of medicines prior to covid was: **`r RawData_COSTS[, mean(WaterS_1, na.rm = TRUE)]`** BDT  
+The mean cost of medicines after to covid was: **`r RawData_COSTS[, mean(WaterS_2, na.rm = TRUE)]`** BDT
+
+#### Difference in total production costs
+
+Based on the difference in total for each farm:
+
+The Number of farms with increased costs due to COVID: **`r RawData_COSTS[DiffProdCost > 0, .N]`**  
+The Number of farms with decreased costs due to COVID: **`r RawData_COSTS[DiffProdCost < 0, .N]`**  
+The Number of farms with no change in costs due to COVID: **`r RawData_COSTS[DiffProdCost == 0, .N]`**  
+
+The mean difference in cost due to COVID: **`r RawData_COSTS[, mean(DiffProdCost, na.rm= TRUE)]`** 
+
+The median difference in cost due to COVID: **`r RawData_COSTS[, median(DiffProdCost, na.rm= TRUE)]`** 
+
+`r CostDifferences_BoxPlot`
+
+```{r Gross margins, include=FALSE}
+####################################################################################
+#
+# In this section the production cycle costs are calculated
+#
+# Because not all farms declare costs for each category only those farms with all costs
+# for seed, feed, water, labour, elec, and medicines are used.
+#
+#####################################################################################
+PreCOVID_TotalCost <- RawData_COSTS[!is.na(WaterS_1) & !is.na(Seed_1) & !is.na(Feed_1) & !is.na(Elec_1) & !is.na(Lab_1) & !is.na(Trans_1) & !is.na(Medic_1) & !is.na(WaterS_2) & !is.na(Seed_2) & !is.na(Feed_2) & !is.na(Elec_2) & !is.na(Lab_2) & !is.na(Trans_2) & !is.na(Medic_1), mean(ProdCost_1)]
+PostCOVID_TotalCost <- RawData_COSTS[!is.na(WaterS_1) & !is.na(Seed_1) & !is.na(Feed_1) & !is.na(Elec_1) & !is.na(Lab_1) & !is.na(Trans_1) & !is.na(Medic_1) & !is.na(Medic_2) &!is.na(WaterS_2) & !is.na(Seed_2) & !is.na(Feed_2) & !is.na(Elec_2) & !is.na(Lab_2) & !is.na(Trans_2), mean(ProdCost_2)]
+
+PreCOVID_TotalCost_STD <- RawData_COSTS[!is.na(WaterS_1) & !is.na(Seed_1) & !is.na(Feed_1) & !is.na(Elec_1) & !is.na(Lab_1) & !is.na(Trans_1)& !is.na(Medic_1)& !is.na(Medic_2) & !is.na(WaterS_2) & !is.na(Seed_2) & !is.na(Feed_2) & !is.na(Elec_2) & !is.na(Lab_2) & !is.na(Trans_2), sd(ProdCost_1)]
+PostCOVID_TotalCost_STD <- RawData_COSTS[!is.na(WaterS_1) & !is.na(Seed_1) & !is.na(Feed_1) & !is.na(Elec_1) & !is.na(Lab_1)& !is.na(Medic_1)& !is.na(Medic_2) & !is.na(Trans_1) & !is.na(WaterS_2) & !is.na(Seed_2) & !is.na(Feed_2) & !is.na(Elec_2) & !is.na(Lab_2) & !is.na(Trans_2), sd(ProdCost_2)]
+
+MeanCostOfCOVID <- RawData_COSTS[!is.na(WaterS_1) & !is.na(Seed_1) & !is.na(Feed_1) & !is.na(Elec_1) & !is.na(Lab_1) & !is.na(Trans_1) & !is.na(WaterS_2)& !is.na(Medic_1)& !is.na(Medic_2) & !is.na(Seed_2) & !is.na(Feed_2) & !is.na(Elec_2) & !is.na(Lab_2) & !is.na(Trans_2), mean(DiffProdCost)]
+
+PreCOVID_TotalCost_Farms <- RawData_COSTS[!is.na(WaterS_1) & !is.na(Seed_1) & !is.na(Feed_1) & !is.na(Elec_1) & !is.na(Lab_1) & !is.na(Trans_1)& !is.na(Medic_1)& !is.na(Medic_2) & !is.na(WaterS_2) & !is.na(Seed_2) & !is.na(Feed_2) & !is.na(Elec_2) & !is.na(Lab_2) & !is.na(Trans_2), .N]
+PostCOVID_TotalCost_Farms <- RawData_COSTS[!is.na(WaterS_1) & !is.na(Seed_1) & !is.na(Feed_1) & !is.na(Elec_1) & !is.na(Lab_1) & !is.na(Trans_1)& !is.na(Medic_1)& !is.na(Medic_2) & !is.na(WaterS_2) & !is.na(Seed_2) & !is.na(Feed_2) & !is.na(Elec_2) & !is.na(Lab_2) & !is.na(Trans_2), .N]
+
+# Generate a data frame to run a model
+FullCostings_DF <- RawData_COSTS[!is.na(WaterS_1) & !is.na(Seed_1) & !is.na(Feed_1) & !is.na(Elec_1) & !is.na(Lab_1) & !is.na(Trans_1)& !is.na(Medic_1)& !is.na(Medic_2) & !is.na(WaterS_2) & !is.na(Seed_2) & !is.na(Feed_2) & !is.na(Elec_2) & !is.na(Lab_2) & !is.na(Trans_2), .(FarmID, FarmSize_Decimal, DiffProdCost, (WaterS_2 - WaterS_1), (Seed_2 - Seed_1), (Feed_2 -  Feed_1), (Elec_2 - Elec_1), (Lab_2 - Lab_1), (Trans_2 - Trans_1), (Medic_2 - Medic_1))]
+colnames(FullCostings_DF)[4] <- "WaterCostDiff"
+colnames(FullCostings_DF)[5] <- "SeedCostDiff"
+colnames(FullCostings_DF)[6] <- "FeedCostDiff"
+colnames(FullCostings_DF)[7] <- "ElecCostDiff"
+colnames(FullCostings_DF)[8] <- "LabourCostDiff"
+colnames(FullCostings_DF)[9] <- "TransCostDiff"
+colnames(FullCostings_DF)[10] <- "MedicineCostDiff"
+
+# Plot the data showing increase in costs
+FullCost_Corr_FarmSize <- plot_ly(type = 'scatter', mode = 'markers', data = FullCostings_DF) %>%
+  add_trace(y = ~FarmSize_Decimal,
+            x = ~DiffProdCost)
+
+FullCost_Corr_WaterCostDiff <- plot_ly(type = 'scatter', mode = 'markers', data = FullCostings_DF) %>%
+  add_trace(y = ~WaterCostDiff,
+            x = ~DiffProdCost)
+
+FullCost_Corr_SeedCostDiff <- plot_ly(type = 'scatter', mode = 'markers', data = FullCostings_DF) %>%
+  add_trace(y = ~SeedCostDiff,
+            x = ~DiffProdCost)
+
+FullCost_Corr_FeedCostDiff <- plot_ly(type = 'scatter', mode = 'markers', data = FullCostings_DF) %>%
+  add_trace(y = ~FeedCostDiff,
+            x = ~DiffProdCost)
+
+FullCost_Corr_ElecCostDiff <- plot_ly(type = 'scatter', mode = 'markers', data = FullCostings_DF) %>%
+  add_trace(y = ~ElecCostDiff,
+            x = ~DiffProdCost)
+
+FullCost_Corr_LabourCostDiff <- plot_ly(type = 'scatter', mode = 'markers', data = FullCostings_DF) %>%
+  add_trace(y = ~LabourCostDiff,
+            x = ~DiffProdCost)
+
+FullCost_Corr_TransCostDiff <- plot_ly(type = 'scatter', mode = 'markers', data = FullCostings_DF) %>%
+  add_trace(y = ~TransCostDiff,
+            x = ~DiffProdCost)
+
+FullCost_Corr_MedicineCostDiff <- plot_ly(type = 'scatter', mode = 'markers', data = FullCostings_DF) %>%
+  add_trace(y = ~MedicineCostDiff,
+            x = ~DiffProdCost)
+
+# Run a GLM model looking at the DiffCost as a function of farmsize, and difference in costs for seed, feed, water, labour, elec and transport
+FullCostGLM <- glm(DiffProdCost ~ FarmSize_Decimal + WaterCostDiff + SeedCostDiff + FeedCostDiff + ElecCostDiff + LabourCostDiff + TransCostDiff + MedicineCostDiff, 
+                   data = FullCostings_DF[DiffProdCost > 0 ,], 
+                   family = 'gaussian')
+
+TestDF <- FullCostings_DF[DiffProdCost > 0 ,]
+TestDF[, ModelCost := (FullCostGLM$coefficients[1] + (FullCostGLM$coefficients[2] * FarmSize_Decimal) + (FullCostGLM$coefficients[3] * WaterCostDiff) + (FullCostGLM$coefficients[4] * SeedCostDiff) + (FullCostGLM$coefficients[5] * FeedCostDiff) + (FullCostGLM$coefficients[6] * ElecCostDiff) + (FullCostGLM$coefficients[7] * LabourCostDiff) + (FullCostGLM$coefficients[8] * TransCostDiff) + (FullCostGLM$coefficients[9] * MedicineCostDiff))]
+
+####################################################
+# Use a glm to model pre-covid costs
+####################################################
+# Generate a data frame to run a model
+PreCOVIDFullCostings_DF <- RawData_COSTS[!is.na(WaterS_1) & !is.na(Seed_1) & !is.na(Feed_1) & !is.na(Elec_1) & !is.na(Lab_1) & !is.na(Trans_1), .(FarmID, ProdCost_1, FarmSize_Decimal, WaterS_1, Seed_1, Feed_1,  Elec_1, Lab_1, Trans_1)]
+PreCoviCostGLM_1 <- glm(ProdCost_1 ~  FarmSize_Decimal + WaterS_1 + Seed_1 + Feed_1 + Elec_1 + Lab_1 + Trans_1, 
+                   data = PreCOVIDFullCostings_DF, 
+                   family = 'gaussian')
+
+PreCoviCostGLM_2 <- glm(ProdCost_1 ~  WaterS_1 + Seed_1 + Feed_1 + Elec_1 + Lab_1 + Trans_1, 
+                   data = PreCOVIDFullCostings_DF, 
+                   family = 'gaussian')
+
+PreCoviCostGLM_3 <- glm(ProdCost_1 ~  WaterS_1 + Seed_1 + Feed_1 + Elec_1 + Lab_1, 
+                   data = PreCOVIDFullCostings_DF, 
+                   family = 'gaussian')
+
+PreCoviCostGLM_4 <- glm(ProdCost_1 ~  WaterS_1 + Seed_1 + Feed_1 + Lab_1 + Trans_1, 
+                   data = PreCOVIDFullCostings_DF, 
+                   family = 'gaussian')
+
+PreCoviCostGLM_5 <- glm(ProdCost_1 ~  WaterS_1 + Seed_1 + Feed_1 + Lab_1, 
+                   data = PreCOVIDFullCostings_DF, 
+                   family = 'gaussian')
+
+PreCOVIDFullCostings_DF <- RawData_COSTS[!is.na(WaterS_1) & !is.na(Seed_1) & !is.na(Feed_1) & !is.na(Elec_1) & !is.na(Lab_1) & !is.na(Trans_1), .(FarmID, ProdCost_1, FarmSize_Decimal, WaterS_1, Seed_1, Feed_1,  Elec_1, Lab_1, Trans_1)]
+PreCoviCostGLM <- glm(ProdCost_1 ~  WaterS_1 + Seed_1 + Feed_1 + Elec_1 + Lab_1, 
+                   data = PreCOVIDFullCostings_DF, 
+                   family = 'gaussian')
+
+library(sjPlot)
+library(jtools)
+
+###################################################################################
+#
+# Rebuild costs using the coefficients
+#
+###################################################################################
+ModelDataSet <- RawData_COSTS[, .(FarmID, DiffProdCost, FarmSize_Decimal, WaterS_1, WaterS_2, Feed_1, Feed_2, Seed_1, Seed_2, Elec_1, Elec_2, Lab_1, Lab_2, Trans_1, Trans_2, Medic_1, Medic_2)]
+
+ModelDataSet[, WaterCostDiff := (WaterS_2 - WaterS_1)]
+ModelDataSet[, SeedCostDiff := (Seed_2 - Seed_1)]
+ModelDataSet[, FeedCostDiff := (Feed_2 - Feed_1)]
+ModelDataSet[, ElecCostDiff := (Elec_2 - Elec_1)]
+ModelDataSet[, LabourCostDiff := (Lab_2 - Lab_1)]
+ModelDataSet[, TransCostDiff := (Trans_2 - Trans_1)]
+ModelDataSet[, MedicineCostDiff := (Medic_2 - Medic_1)]
+
+ModelDataSet[, ModelWaterCostDiff := (WaterCostDiff * FullCostGLM$coefficients[3])]
+ModelDataSet[, ModelSeedCostDiff := (SeedCostDiff * FullCostGLM$coefficients[4])]
+ModelDataSet[, ModelFeedCostDiff := (FeedCostDiff * FullCostGLM$coefficients[5])]
+ModelDataSet[, ModelElecCostDiff := (ElecCostDiff * FullCostGLM$coefficients[6])]
+ModelDataSet[, ModelLabourCostDiff := (LabourCostDiff * FullCostGLM$coefficients[7])]
+ModelDataSet[, ModelTransCostDiff := (TransCostDiff * FullCostGLM$coefficients[8])]
+ModelDataSet[, ModelMedicineCostDiff := (MedicineCostDiff * FullCostGLM$coefficients[9])]
+
+# Calculate the diff
+ModelDataSet[is.na(ModelDataSet)] <- 0
+ModelDataSet[, ModelDiffProdCost := (ModelWaterCostDiff + ModelSeedCostDiff + ModelFeedCostDiff + ModelElecCostDiff + ModelLabourCostDiff + ModelTransCostDiff + ModelMedicineCostDiff)]
+
+# Get the correlation co-efficient
+ModelledCost_Corr_Coef <- lm(DiffProdCost~ModelDiffProdCost, data = ModelDataSet)
+ModelledCost_Corr_Test <- cor.test(ModelDataSet[, ]$DiffProdCost, ModelDataSet[, ]$ModelDiffProdCost,
+                                   method = "pearson")
+# Scatter plot the real versus modelled differences
+ModelledCost_Corr_TransCostDiff <- plot_ly(type = 'scatter', mode = 'markers', data = ModelDataSet) %>%
+  add_trace(y = ~ModelDiffProdCost,
+            x = ~DiffProdCost)
+
+# Calculate the differences using mean values from those farms reporting
+MeanDiff <- sum(FullCostGLM$coefficients[1],
+                (ModelDataSet[WaterCostDiff > 0, mean(WaterCostDiff)] * FullCostGLM$coefficients[3]),
+            (ModelDataSet[SeedCostDiff > 0, mean(SeedCostDiff)] * FullCostGLM$coefficients[4]),
+            (ModelDataSet[FeedCostDiff > 0, mean(FeedCostDiff)] * FullCostGLM$coefficients[5]), 
+            (ModelDataSet[ElecCostDiff > 0, mean(ElecCostDiff)] * FullCostGLM$coefficients[6]), 
+            (ModelDataSet[LabourCostDiff > 0, mean(LabourCostDiff)] * FullCostGLM$coefficients[7]), 
+            (ModelDataSet[TransCostDiff > 0, mean(TransCostDiff)] * FullCostGLM$coefficients[8]),
+            (ModelDataSet[MedicineCostDiff > 0, mean(MedicineCostDiff)] * FullCostGLM$coefficients[9])) 
+####################################################################
+# Rerun the model using the mean values in place of NAs
+####################################################################
+CompleteDataSet <- RawData_COSTS[, .(FarmID, DiffProdCost, FarmSize_Decimal, WaterS_1, WaterS_2, Feed_1, Feed_2, Seed_1, Seed_2, Elec_1, Elec_2, Lab_1, Lab_2, Trans_1, Trans_2, Medic_1, Medic_2)]
+
+CompleteDataSet[is.na(WaterS_1), WaterS_1 := CompleteDataSet[, mean(WaterS_1, na.rm = TRUE)]]
+CompleteDataSet[is.na(WaterS_2), WaterS_2 := CompleteDataSet[, mean(WaterS_2, na.rm = TRUE)]]
+CompleteDataSet[is.na(Feed_1), Feed_1 := CompleteDataSet[, mean(Feed_1, na.rm = TRUE)]]
+CompleteDataSet[is.na(Feed_2), Feed_2 := CompleteDataSet[, mean(Feed_2, na.rm = TRUE)]]
+CompleteDataSet[is.na(Seed_1), Seed_1 := CompleteDataSet[, mean(Seed_1, na.rm = TRUE)]]
+CompleteDataSet[is.na(Seed_2), Seed_2 := CompleteDataSet[, mean(Seed_2, na.rm = TRUE)]]
+CompleteDataSet[is.na(Elec_1), Elec_1 := CompleteDataSet[, mean(Elec_1, na.rm = TRUE)]]
+CompleteDataSet[is.na(Elec_2), Elec_2 := CompleteDataSet[, mean(Elec_2, na.rm = TRUE)]]
+CompleteDataSet[is.na(Lab_1), Lab_1 := CompleteDataSet[, mean(Lab_1, na.rm = TRUE)]]
+CompleteDataSet[is.na(Lab_2), Lab_2 := CompleteDataSet[, mean(Lab_2, na.rm = TRUE)]]
+CompleteDataSet[is.na(Trans_1), Trans_1 := CompleteDataSet[, mean(Trans_1, na.rm = TRUE)]]
+CompleteDataSet[is.na(Trans_2), Trans_2 := CompleteDataSet[, mean(Trans_2, na.rm = TRUE)]]
+CompleteDataSet[is.na(Medic_1), Medic_1 := CompleteDataSet[, mean(Medic_1, na.rm = TRUE)]]
+CompleteDataSet[is.na(Medic_2), Medic_2 := CompleteDataSet[, mean(Medic_2, na.rm = TRUE)]]
+
+CompleteDataSet[, WaterCostDiff := (WaterS_2 - WaterS_1)]
+CompleteDataSet[, SeedCostDiff := (Seed_2 - Seed_1)]
+CompleteDataSet[, FeedCostDiff := (Feed_2 - Feed_1)]
+CompleteDataSet[, ElecCostDiff := (Elec_2 - Elec_1)]
+CompleteDataSet[, LabourCostDiff := (Lab_2 - Lab_1)]
+CompleteDataSet[, TransCostDiff := (Trans_2 - Trans_1)]
+CompleteDataSet[, MedicineCostDiff := (Medic_2 - Medic_1)]
+
+CompleteDataSet[, CompleteDiffProdCost := (WaterCostDiff + SeedCostDiff + FeedCostDiff + ElecCostDiff + LabourCostDiff + TransCostDiff+ MedicineCostDiff)]
+
+# Get the correlation co-efficient
+CompleteProdCost_Corr_Coef <- lm(DiffProdCost~CompleteDiffProdCost, data = CompleteDataSet)
+CompleteProdCost_Corr_Test <- cor.test(CompleteDataSet[, ]$DiffProdCost, CompleteDataSet[, ]$CompleteDiffProdCost,
+                                   method = "pearson")
+
+# Plot the estimated prod costs
+CompleteProdCost_Corr_TransCostDiff <- plot_ly(type = 'scatter', mode = 'markers') %>%
+  add_trace(data = CompleteDataSet,
+            y = ~CompleteDiffProdCost,
+            x = ~FarmSize_Decimal,
+            name = "Estimated Production Costs") %>%
+  add_trace(data = FullCostings_DF,
+            y = ~DiffProdCost,
+            x = ~FarmSize_Decimal,
+            name = "Actual Production Costs")
+####################################################################################
+#
+# Look at profit margins
+#
+####################################################################################
+```
+
+### Linear model for Costs
+
+To understand what costs are driving the difference between pre and post COVID production costs a linear model was generated. This involved only using the farms that have the full range of costs present.
+
+The mean pre-COVID production cost (only for farms with all data) was **`r PreCOVID_TotalCost`** using data from **`r PreCOVID_TotalCost_Farms`** farms with a standard deviation of **`r PreCOVID_TotalCost_STD`**.    
+The mean post-COVID production cost (only for farms with all data) was **`r PostCOVID_TotalCost`** using data from **`r PostCOVID_TotalCost_Farms`** farms with a standard deviation of  **`r PostCOVID_TotalCost_STD`**.    
+
+The mean difference in cost of production for those farms with all the data was **`r MeanCostOfCOVID`**  
+
+The number of farms showing an increase in production costs was **`r FullCostings_DF[DiffProdCost > 0 , .N]`**  
+The number of farms showing an decrease in production costs was **`r FullCostings_DF[DiffProdCost < 0 , .N]`**  
+The number of farms showing no change in production costs was **`r FullCostings_DF[DiffProdCost == 0 , .N]`**  
+
+#### Farms showing an increase in costs
+
+For the farms showing an increase in cost.
+
+`r FullCost_Corr_FarmSize`
+`r FullCost_Corr_WaterCostDiff`
+`r FullCost_Corr_SeedCostDiff`  
+`r FullCost_Corr_FeedCostDiff`  
+`r FullCost_Corr_ElecCostDiff`  
+`r FullCost_Corr_LabourCostDiff`  
+`r FullCost_Corr_TransCostDiff`  
+
+The differences in costs for water, feed, seed, electricity, medicines and transport were fed into a linear model along with the farm size to understand which were drivers of the increase in costs (using only farms showing an increase in costs).
+
+The summary of the model is:
+
+`r tab_model(FullCostGLM, show.reflvl = TRUE)`  
+
+`r summ(FullCostGLM)`  
+
+ Using scaled coefficients and robust R2  
+ 
+`r summ(FullCostGLM, scale = TRUE)` 
+
+### Using the modelled coefficients on all the data
+
+The modelled coefficients were used on all the farm data set to produce a modelled difference in cost and the actual difference in cost.  These were plotted on a scatter plot
+
+`r ModelledCost_Corr_TransCostDiff`
+
+
+Using the mean values for the various costs the following mean farm cost model was set up for the difference pre and post COVID
+
+* **Difference In Costs** =  
+  + `r format(FullCostGLM$coefficients[1], nsmall = 1)` +  
+  + `r format(FullCostGLM$coefficients[2], nsmall = 1)` x Farm Size in decimals
+  + `r format(FullCostGLM$coefficients[3], nsmall = 1)` x `r format(ModelDataSet[WaterCostDiff > 0, mean(WaterCostDiff)], nsmall = 1)` (Mean Difference in Water Supply Cost)
+  + `r FullCostGLM$coefficients[4]` x `r format(ModelDataSet[SeedCostDiff > 0, mean(SeedCostDiff)], nsmall = 1)` (Mean Difference in Seed Cost)
+  + `r FullCostGLM$coefficients[5]` x `r format(ModelDataSet[FeedCostDiff > 0, mean(FeedCostDiff)], nsmall = 1)` (Mean Difference in Feed Cost)
+  + `r FullCostGLM$coefficients[6]` x `r format(ModelDataSet[ElecCostDiff > 0, mean(ElecCostDiff)], nsmall = 1)` (Mean Difference in Electricity Cost)
+  + `r FullCostGLM$coefficients[7]` x `r format(ModelDataSet[LabourCostDiff > 0, mean(LabourCostDiff)], nsmall = 1)` (Mean Difference in Labour Cost)
+  + `r FullCostGLM$coefficients[8]` x `r ModelDataSet[TransCostDiff > 0, mean(TransCostDiff)]` (Mean Difference in Transport Cost)
+  + `r FullCostGLM$coefficients[9]` x `r ModelDataSet[MedicineCostDiff > 0, mean(MedicineCostDiff)]` (Mean Difference in Medicine Cost)
+  
+* Therefore for the mean model the difference in costs is:
+
+* **Difference In Costs** =   `r format(MeanDiff, nsmall = 1)` + `r format(FullCostGLM$coefficients[2], nsmall = 1)` x Farm Size in decimals
+
+So for farms:  
+* 0.5 Ha average small farm: Mean difference due to COVID = `r format((MeanDiff + (FullCostGLM$coefficients[2] * 0.5 * 247.11)), nsmall = 1)` or `r format(((MeanDiff + (FullCostGLM$coefficients[2] * 0.5 * 247.11)) * 0.012), nsmall = 1)` USD
+
+* 1 Ha farm: Mean difference due to COVID = `r format((MeanDiff + (FullCostGLM$coefficients[2] * 1 * 247.11)), nsmall = 1)` or `r format(((MeanDiff + (FullCostGLM$coefficients[2] * 1 * 247.11)) * 0.012), nsmall = 1)` USD
+
+* 3.5 Ha farm: Mean difference due to COVID = `r format((MeanDiff + (FullCostGLM$coefficients[2] * 3.5 * 247.11)), nsmall = 1)` or `r format(((MeanDiff + (FullCostGLM$coefficients[2] * 3.5 * 247.11)) * 0.012), nsmall = 1)` USD
+
+* 6 Ha farm: Mean difference due to COVID = `r format((MeanDiff + (FullCostGLM$coefficients[2] * 6 * 247.11)), nsmall = 1)` or `r format(((MeanDiff + (FullCostGLM$coefficients[2] * 6 * 247.11)) * 0.012), nsmall = 1)` USD  
+
+### Using mean values and remodelling
+
+Where a farm had not declared a value for a cost the mean value was inserted and from this the production costs regenerated . The values were plotted versus farm size and the actual full costings included.
+
+`r CompleteProdCost_Corr_TransCostDiff`
+
+  
+```{r Calculating relative gross margins, include=FALSE}
+###################################################################
+# Use the farm size model to estimate the overall costs
+###################################################################
+RelativeGrossMargins <- CompleteDataSet[, .(FarmID, CompleteDiffProdCost)]
+RelativeGrossMargins <- merge(RelativeGrossMargins, Yield_Table, by = "FarmID")
+
+# Plot the estimated prod costs
+EstimateProdCost_Corr_TransCostDiff <- plot_ly(type = 'scatter', mode = 'markers') %>%
+  add_trace(data = RelativeGrossMargins,
+            y = ~CompleteDiffProdCost,
+            x = ~FarmSize_Decimal,
+            name = "Estimated Production Costs") %>%
+  add_trace(data = FullCostings_DF,
+            y = ~DiffProdCost,
+            x = ~FarmSize_Decimal,
+            name = "Actual Production Costs")
+
+# Add the yield difference and cost difference
+RelativeGrossMargins[, TotalDiff := (CompleteDiffProdCost + Diff_COVID_Yield)]
+
+# Plot the Total difference in margin
+EstimateProdCost_GrossMargin <- plot_ly(type = 'scatter', mode = 'markers') %>%
+  add_trace(data = RelativeGrossMargins,
+            y = ~CompleteDiffProdCost,
+            x = ~FarmSize_Decimal,
+            name = "Gross margin difference")
+
+# Calculate the relative change in gross margins using the pre-covid yield as the benchmark
+RelativeGrossMargins[, RelMarginChange := (TotalDiff/Pre_COVID_Yield)]
+
+# Plot the Relative difference in margin
+EstimateProdCost_RelativeMargin <- plot_ly(type = 'scatter', mode = 'markers') %>%
+  add_trace(data = RelativeGrossMargins,
+            y = ~RelMarginChange,
+            x = ~FarmSize_Decimal,
+            name = "Relative margin difference")
+
+# Try assessing impacts through a glm
+RelativeMarginGLM <- glm(RelMarginChange ~ FarmSize_Decimal + ShrimpCoCulture + FinfishCoCulture + NoFinfish + TotalSpecies, 
+                   data = RelativeGrossMargins, 
+                   family = 'gaussian')
+
+RelativeMarginGLM_2 <- glm(RelMarginChange ~ FinfishCoCulture, 
+                   data = RelativeGrossMargins, 
+                   family = 'gaussian')
+```
+
+## Calculating the gross margins
+
+Not all the farms have information for all the costs and therefore using a model to attempt to establish the overall cost. To overcome this the process will be to understand the relative change from the pre-COVID value.  We can assume that this is 100% gross margin pre-COVID and see what the gross-margin is after COVID by factoring in the cost differences and the difference in yield prices.
+
+Using the model from the full costed farms the production costs differences were estimated for all the farms.  These were plotted versus farm size, with the known costs added as well.
+
+`r EstimateProdCost_Corr_TransCostDiff`
+
+The difference in yield (price achieved for produce) and difference in production costs were summed to generate a total difference in gross margin. These were plotted against the farm size.  
+
+`r EstimateProdCost_GrossMargin`
+
+The relative margin change was calculated using the pre-COVID yield as the benchmark of 1.0. Here positive values indicate a reduction, and negative values an increase.  
+
+`r EstimateProdCost_RelativeMargin`
+
+The plot suggests that the farm size has little impact on the relative impact on the gross margin, and that most farms experienced a negative impact on margins (losing money).  
+
+The mean relative gross margin impact was **`r RelativeGrossMargins[, mean(RelMarginChange)]`**  and the median was  **`r RelativeGrossMargins[, median(RelMarginChange)]`**  
+
+
+A generalised linear model was used to assess whether there were any associations between farm size, co-culture of shrimp or finfish, and the number of species in a pond, and the relative margin change.
+
+`r summ(RelativeMarginGLM)`  
+
+This suggests that only finfish co-culture has an effect.
+
+`r summ(RelativeMarginGLM_2)` 
+
+```{r UsingRelativeMargins, include=FALSE}
+#########################################################################
+# The model method has not added much so going to use a relative approach
+#########################################################################
+
+# Generate the data set to use
+RelativeTableDataSet <- RawData_COSTS[, .(FarmID, WaterS_1, WaterS_2, Feed_1, Feed_2, Seed_1, Seed_2, Elec_1, Elec_2, Lab_1, Lab_2, Trans_1, Trans_2, Medic_1, Medic_2, ProdCost_1, ProdCost_2)]
+
+# Merge with the yield data
+RelativeTableDataSet <- merge(RelativeTableDataSet, Yield_Table, by = "FarmID")
+
+# Generate the percentage difference for the production costs
+RelativeTableDataSet[, PerProdCostDiff := (((ProdCost_2 - ProdCost_1) / ProdCost_1) * 100)]
+RelativeTableDataSet[, PerFeedDiff := (((Feed_2 - Feed_1) / Feed_1) * 100)]
+RelativeTableDataSet[, PerSeedDiff := (((Seed_2 - Seed_1) / Seed_1) * 100)]
+RelativeTableDataSet[, PerWaterSDiff := (((WaterS_2 - WaterS_1) / WaterS_1) * 100)]
+RelativeTableDataSet[, PerElecDiff := (((Elec_2 - Elec_1) / Elec_1) * 100)]
+RelativeTableDataSet[, PerTransDiff := (((Trans_2 - Trans_1) / Trans_1) * 100)]
+RelativeTableDataSet[, PerLabDiff := (((Lab_2 - Lab_1) / Lab_1) * 100)]
+RelativeTableDataSet[, PerMedicDiff := (((Medic_2 - Medic_1) / Medic_1) * 100)]
+
+# Generate relative values for the revenue and costs
+RelativeTableDataSet[, RelRevenue := Post_COVID_Yield/Pre_COVID_Yield]
+RelativeTableDataSet[, RelProdCost := ProdCost_2/ProdCost_1]
+RelativeTableDataSet[, RelFeedCost := Feed_2/Feed_1]
+RelativeTableDataSet[, RelSeedCost := Seed_2/Seed_1]
+RelativeTableDataSet[, RelWaterSCost := WaterS_2/WaterS_1]
+RelativeTableDataSet[, RelLabCost := Lab_2/Lab_1]
+RelativeTableDataSet[, RelMedicCost := Medic_2/Medic_1]
+RelativeTableDataSet[, RelTransCost := Trans_2/Trans_1]
+RelativeTableDataSet[, RelElecCost := Elec_2/Elec_1]
+
+# Generate the correlation coefficients to link production cost with farm size
+# Use Pearsons rank
+PreCovidYield_Corr_Coef <- lm(Pre_COVID_Yield~FarmSize_Decimal, data = RelativeTableDataSet)
+PreCovidYield_Corr_Test <- cor.test(RelativeTableDataSet$Pre_COVID_Yield, RelativeTableDataSet$FarmSize_Decimal,
+                                   method = "pearson")
+
+# Generate the correlation coefficients to link production cost with farm size
+# Use Pearsons rank
+PostCovidYield_Corr_Coef <- lm(Post_COVID_Yield~FarmSize_Decimal, data = RelativeTableDataSet)
+PostCovidYield_Corr_Test <- cor.test(RelativeTableDataSet$Post_COVID_Yield, RelativeTableDataSet$FarmSize_Decimal,
+                                   method = "pearson")
+
+# Generate the correlation coefficients to link production cost with farm size
+# Use Pearsons rank
+ProdCost_1_Corr_Coef <- lm(ProdCost_1~FarmSize_Decimal, data = RelativeTableDataSet)
+ProdCost_1_Corr_Test <- cor.test(RelativeTableDataSet$ProdCost_1, RelativeTableDataSet$FarmSize_Decimal,
+                                   method = "pearson")
+# Generate the correlation coefficients to link production cost with farm size
+# Use Pearsons rank
+ProdCost_2_Corr_Coef <- lm(ProdCost_2~FarmSize_Decimal, data = RelativeTableDataSet)
+ProdCost_2_Corr_Test <- cor.test(RelativeTableDataSet$ProdCost_2, RelativeTableDataSet$FarmSize_Decimal,
+                                   method = "pearson")
+
+# Perform correlations for relative values
+# Use Pearsons rank
+RelRevenue_Corr_Coef <- lm(RelRevenue~FarmSize_Decimal, data = RelativeTableDataSet[!is.na(RelRevenue)])
+RelRevenue__Corr_Test <- cor.test(RelativeTableDataSet[!is.na(RelRevenue),]$RelRevenue, RelativeTableDataSet[!is.na(RelRevenue),]$FarmSize_Decimal,
+                                   method = "pearson")
+RelProd_Corr_Coef <- lm(RelProdCost~FarmSize_Decimal, data = RelativeTableDataSet[!is.na(RelProdCost)])
+RelProd__Corr_Test <- cor.test(RelativeTableDataSet[!is.na(RelProdCost),]$RelProdCost, RelativeTableDataSet[!is.na(RelProdCost),]$FarmSize_Decimal,
+                                   method = "pearson")
+RelSeed_Corr_Coef <- lm(RelSeedCost~FarmSize_Decimal, data = RelativeTableDataSet[!is.na(RelSeedCost)])
+RelSeed__Corr_Test <- cor.test(RelativeTableDataSet[!is.na(RelSeedCost),]$RelSeedCost, RelativeTableDataSet[!is.na(RelSeedCost),]$FarmSize_Decimal,
+                                   method = "pearson")
+RelFeed_Corr_Coef <- lm(RelFeedCost~FarmSize_Decimal, data = RelativeTableDataSet[!is.na(RelFeedCost)])
+RelFeed_Corr_Test <- cor.test(RelativeTableDataSet[!is.na(RelFeedCost),]$RelFeedCost, RelativeTableDataSet[!is.na(RelFeedCost),]$FarmSize_Decimal,
+                                   method = "pearson")
+RelTrans_Corr_Coef <- lm(RelTransCost~FarmSize_Decimal, data = RelativeTableDataSet[!is.na(RelTransCost)])
+RelTrans__Corr_Test <- cor.test(RelativeTableDataSet[!is.na(RelTransCost),]$RelTransCost, RelativeTableDataSet[!is.na(RelTransCost),]$FarmSize_Decimal,
+                                   method = "pearson")
+RelWaterS_Corr_Coef <- lm(RelWaterSCost~FarmSize_Decimal, data = RelativeTableDataSet[!is.na(RelWaterSCost)])
+RelWaterS__Corr_Test <- cor.test(RelativeTableDataSet[!is.na(RelWaterSCost),]$RelWaterSCost, RelativeTableDataSet[!is.na(RelWaterSCost),]$FarmSize_Decimal,
+                                   method = "pearson")
+RelElec_Corr_Coef <- lm(RelElecCost~FarmSize_Decimal, data = RelativeTableDataSet[!is.na(RelElecCost)])
+RelElec__Corr_Test <- cor.test(RelativeTableDataSet[!is.na(RelElecCost),]$RelElecCost, RelativeTableDataSet[!is.na(RelElecCost),]$FarmSize_Decimal,
+                                   method = "pearson")
+RelLab_Corr_Coef <- lm(RelLabCost~FarmSize_Decimal, data = RelativeTableDataSet[!is.na(RelLabCost)])
+RelLab__Corr_Test <- cor.test(RelativeTableDataSet[!is.na(RelLabCost),]$RelLabCost, RelativeTableDataSet[!is.na(RelLabCost),]$FarmSize_Decimal,
+                                   method = "pearson")
+RelMedic_Corr_Coef <- lm(RelMedicCost~FarmSize_Decimal, data = RelativeTableDataSet[!is.na(RelMedicCost)])
+RelMedic__Corr_Test <- cor.test(RelativeTableDataSet[!is.na(RelMedicCost),]$RelMedicCost, RelativeTableDataSet[!is.na(RelMedicCost),]$FarmSize_Decimal,
+                                   method = "pearson")
+####################################################################################################################
+
+# Generate the correlation coefficients to link production cost with farm size
+# Use Pearsons rank
+WaterS_1_Corr_Coef <- lm(WaterS_1~FarmSize_Decimal, data = RelativeTableDataSet[!is.na(WaterS_1)])
+WaterS_1_Corr_Test <- cor.test(RelativeTableDataSet[!is.na(WaterS_1),]$WaterS_1, RelativeTableDataSet[!is.na(WaterS_1),]$FarmSize_Decimal, method = "pearson")
+# Flag to use the correlation or not
+UseCorr = FALSE
+# Replace the missing production cost values using correlation if significant or median if not
+if (WaterS_1_Corr_Test$p.value < 0.05 & UseCorr == TRUE){
+  # Use the correlation coefficient
+  RelativeTableDataSet[, MedWaterS_1 := (WaterS_1_Corr_Coef$coefficients[1] + (WaterS_1_Corr_Coef$coefficients[2] * FarmSize_Decimal))]  
+} else {
+  # Use the median value
+  RelativeTableDataSet[, MedWaterS_1 := RelativeTableDataSet[, median(WaterS_1, na.rm = TRUE)]]
+}
+
+# Generate the correlation coefficients to link production cost with farm size
+# Use Pearsons rank
+WaterS_2_Corr_Coef <- lm(WaterS_2~FarmSize_Decimal, data = RelativeTableDataSet[!is.na(WaterS_2)])
+WaterS_2_Corr_Test <- cor.test(RelativeTableDataSet[!is.na(WaterS_2),]$WaterS_2, RelativeTableDataSet[!is.na(WaterS_2),]$FarmSize_Decimal,
+                                   method = "pearson")
+
+# Replace the missing production cost values using correlation if significant or median if not
+if (WaterS_2_Corr_Test$p.value < 0.05 & UseCorr == TRUE){
+  # Use the correlation coefficient
+  RelativeTableDataSet[, MedWaterS_2 := (WaterS_2_Corr_Coef$coefficients[1] + (WaterS_2_Corr_Coef$coefficients[2] * FarmSize_Decimal))]  
+} else {
+  # Use the median value
+  RelativeTableDataSet[, MedWaterS_2 := RelativeTableDataSet[, median(WaterS_2, na.rm = TRUE)]]
+}
+
+# Generate the correlation coefficients to link production cost with farm size
+# Use Pearsons rank
+Feed_1_Corr_Coef <- lm(Feed_1~FarmSize_Decimal, data = RelativeTableDataSet[!is.na(Feed_1)])
+Feed_1_Corr_Test <- cor.test(RelativeTableDataSet[!is.na(Feed_1),]$Feed_1, RelativeTableDataSet[!is.na(Feed_1),]$FarmSize_Decimal,
+                                   method = "pearson")
+
+# Replace the missing production cost values using correlation if significant or median if not
+if (Feed_1_Corr_Test$p.value < 0.05 & UseCorr == TRUE){
+  # Use the correlation coefficient
+  RelativeTableDataSet[, MedFeed_1 := (Feed_1_Corr_Coef$coefficients[1] + (Feed_1_Corr_Coef$coefficients[2] * FarmSize_Decimal))]  
+} else {
+  # Use the median value
+  RelativeTableDataSet[, MedFeed_1 := RelativeTableDataSet[, median(Feed_1, na.rm = TRUE)]]
+}
+
+# Generate the correlation coefficients to link production cost with farm size
+# Use Pearsons rank
+Feed_2_Corr_Coef <- lm(Feed_2~FarmSize_Decimal, data = RelativeTableDataSet[!is.na(Feed_2)])
+Feed_2_Corr_Test <- cor.test(RelativeTableDataSet[!is.na(Feed_2),]$Feed_2, RelativeTableDataSet[!is.na(Feed_2),]$FarmSize_Decimal,
+                                   method = "pearson")
+
+# Replace the missing production cost values using correlation if significant or median if not
+if (Feed_2_Corr_Test$p.value < 0.05 & UseCorr == TRUE){
+  # Use the correlation coefficient
+  RelativeTableDataSet[, MedFeed_2 := (Feed_2_Corr_Coef$coefficients[1] + (Feed_2_Corr_Coef$coefficients[2] * FarmSize_Decimal))]  
+} else {
+  # Use the median value
+  RelativeTableDataSet[, MedFeed_2 := RelativeTableDataSet[, median(Feed_2, na.rm = TRUE)]]
+}
+
+# Now for seed
+# Generate the correlation coefficients to link production cost with farm size
+# Use Pearsons rank
+Seed_1_Corr_Coef <- lm(Seed_1~FarmSize_Decimal, data = RelativeTableDataSet[!is.na(Seed_1)])
+Seed_1_Corr_Test <- cor.test(RelativeTableDataSet[!is.na(Seed_1),]$Seed_1, RelativeTableDataSet[!is.na(Seed_1),]$FarmSize_Decimal,
+                                   method = "pearson")
+
+# Replace the missing production cost values using correlation if significant or median if not
+if (Seed_1_Corr_Test$p.value < 0.05 & UseCorr == TRUE){
+  # Use the correlation coefficient
+  RelativeTableDataSet[, MedSeed_1 := (Seed_1_Corr_Coef$coefficients[1] + (Seed_1_Corr_Coef$coefficients[2] * FarmSize_Decimal))]  
+} else {
+  # Use the median value
+  RelativeTableDataSet[, MedSeed_1 := RelativeTableDataSet[, median(Seed_1, na.rm = TRUE)]]
+}
+
+# Generate the correlation coefficients to link production cost with farm size
+# Use Pearsons rank
+Seed_2_Corr_Coef <- lm(Seed_2~FarmSize_Decimal, data = RelativeTableDataSet[!is.na(Seed_2)])
+Seed_2_Corr_Test <- cor.test(RelativeTableDataSet[!is.na(Seed_2),]$Seed_2, RelativeTableDataSet[!is.na(Seed_2),]$FarmSize_Decimal,
+                                   method = "pearson")
+
+# Replace the missing production cost values using correlation if significant or median if not
+if (Seed_2_Corr_Test$p.value < 0.05 & UseCorr == TRUE){
+  # Use the correlation coefficient
+  RelativeTableDataSet[, MedSeed_2 := (Seed_2_Corr_Coef$coefficients[1] + (Seed_2_Corr_Coef$coefficients[2] * FarmSize_Decimal))]  
+} else {
+  # Use the median value
+  RelativeTableDataSet[, MedSeed_2 := RelativeTableDataSet[, median(Seed_2, na.rm = TRUE)]]
+}
+
+# Now for Elec
+# Generate the correlation coefficients to link production cost with farm size
+# Use Pearsons rank
+Elec_1_Corr_Coef <- lm(Elec_1~FarmSize_Decimal, data = RelativeTableDataSet[!is.na(Elec_1)])
+Elec_1_Corr_Test <- cor.test(RelativeTableDataSet[!is.na(Elec_1),]$Elec_1, RelativeTableDataSet[!is.na(Elec_1),]$FarmSize_Decimal,
+                                   method = "pearson")
+
+# Replace the missing production cost values using correlation if significant or median if not
+if (Elec_1_Corr_Test$p.value < 0.05 & UseCorr == TRUE){
+  # Use the correlation coefficient
+  RelativeTableDataSet[, MedElec_1 := (Elec_1_Corr_Coef$coefficients[1] + (Elec_1_Corr_Coef$coefficients[2] * FarmSize_Decimal))]  
+} else {
+  # Use the median value
+  RelativeTableDataSet[, MedElec_1 := RelativeTableDataSet[, median(Elec_1, na.rm = TRUE)]]
+}
+
+# Generate the correlation coefficients to link production cost with farm size
+# Use Pearsons rank
+Elec_2_Corr_Coef <- lm(Elec_2~FarmSize_Decimal, data = RelativeTableDataSet[!is.na(Elec_2)])
+Elec_2_Corr_Test <- cor.test(RelativeTableDataSet[!is.na(Elec_2),]$Elec_2, RelativeTableDataSet[!is.na(Elec_2),]$FarmSize_Decimal,
+                                   method = "pearson")
+
+# Replace the missing production cost values using correlation if significant or median if not
+if (Elec_2_Corr_Test$p.value < 0.05 & UseCorr == TRUE){
+  # Use the correlation coefficient
+  RelativeTableDataSet[, MedElec_2 := (Elec_2_Corr_Coef$coefficients[1] + (Elec_2_Corr_Coef$coefficients[2] * FarmSize_Decimal))]  
+} else {
+  # Use the median value
+  RelativeTableDataSet[, MedElec_2 := RelativeTableDataSet[, median(Elec_2, na.rm = TRUE)]]
+}
+
+# Now for Labour
+# Generate the correlation coefficients to link production cost with farm size
+# Use Pearsons rank
+Lab_1_Corr_Coef <- lm(Lab_1~FarmSize_Decimal, data = RelativeTableDataSet[!is.na(Lab_1)])
+Lab_1_Corr_Test <- cor.test(RelativeTableDataSet[!is.na(Lab_1),]$Lab_1, RelativeTableDataSet[!is.na(Lab_1),]$FarmSize_Decimal,
+                                   method = "pearson")
+
+# Replace the missing production cost values using correlation if significant or median if not
+if (Lab_1_Corr_Test$p.value < 0.05 & UseCorr == TRUE){
+  # Use the correlation coefficient
+  RelativeTableDataSet[, MedLab_1 := (Lab_1_Corr_Coef$coefficients[1] + (Lab_1_Corr_Coef$coefficients[2] * FarmSize_Decimal))]  
+} else {
+  # Use the median value
+  RelativeTableDataSet[, MedLab_1 := RelativeTableDataSet[, median(Lab_1, na.rm = TRUE)]]
+}
+
+# Generate the correlation coefficients to link production cost with farm size
+# Use Pearsons rank
+Lab_2_Corr_Coef <- lm(Lab_2~FarmSize_Decimal, data = RelativeTableDataSet[!is.na(Lab_2)])
+Lab_2_Corr_Test <- cor.test(RelativeTableDataSet[!is.na(Lab_2),]$Lab_2, RelativeTableDataSet[!is.na(Lab_2),]$FarmSize_Decimal,
+                                   method = "pearson")
+
+# Replace the missing production cost values using correlation if significant or median if not
+if (Lab_2_Corr_Test$p.value < 0.05 & UseCorr == TRUE){
+  # Use the correlation coefficient
+  RelativeTableDataSet[, MedLab_2 := (Lab_2_Corr_Coef$coefficients[1] + (Lab_2_Corr_Coef$coefficients[2] * FarmSize_Decimal))]  
+} else {
+  # Use the median value
+  RelativeTableDataSet[, MedLab_2 := RelativeTableDataSet[, median(Lab_2, na.rm = TRUE)]]
+}
+# Now for Transport
+# Generate the correlation coefficients to link production cost with farm size
+# Use Pearsons rank
+Trans_1_Corr_Coef <- lm(Trans_1~FarmSize_Decimal, data = RelativeTableDataSet[!is.na(Trans_1)])
+Trans_1_Corr_Test <- cor.test(RelativeTableDataSet[!is.na(Trans_1),]$Trans_1, RelativeTableDataSet[!is.na(Trans_1),]$FarmSize_Decimal,
+                                   method = "pearson")
+
+# Replace the missing production cost values using correlation if significant or median if not
+if (Trans_1_Corr_Test$p.value < 0.05 & UseCorr == TRUE){
+  # Use the correlation coefficient
+  RelativeTableDataSet[, MedTrans_1 := (Trans_1_Corr_Coef$coefficients[1] + (Trans_1_Corr_Coef$coefficients[2] * FarmSize_Decimal))]  
+} else {
+  # Use the median value
+  RelativeTableDataSet[, MedTrans_1 := RelativeTableDataSet[, median(Trans_1, na.rm = TRUE)]]
+}
+
+# Generate the correlation coefficients to link production cost with farm size
+# Use Pearsons rank
+Trans_2_Corr_Coef <- lm(Trans_2~FarmSize_Decimal, data = RelativeTableDataSet[!is.na(Trans_2)])
+Trans_2_Corr_Test <- cor.test(RelativeTableDataSet[!is.na(Trans_2),]$Trans_2, RelativeTableDataSet[!is.na(Trans_2),]$FarmSize_Decimal,
+                                   method = "pearson")
+
+# Replace the missing production cost values using correlation if significant or median if not
+if (Trans_2_Corr_Test$p.value < 0.05 & UseCorr == TRUE){
+  # Use the correlation coefficient
+  RelativeTableDataSet[, MedTrans_2 := (Trans_2_Corr_Coef$coefficients[1] + (Trans_2_Corr_Coef$coefficients[2] * FarmSize_Decimal))]  
+} else {
+  # Use the median value
+  RelativeTableDataSet[, MedTrans_2 := RelativeTableDataSet[, median(Trans_2, na.rm = TRUE)]]
+}
+
+# Now for Medicine
+# Generate the correlation coefficients to link production cost with farm size
+# Use Pearsons rank
+Medic_1_Corr_Coef <- lm(Medic_1~FarmSize_Decimal, data = RelativeTableDataSet[!is.na(Medic_1)])
+Medic_1_Corr_Test <- cor.test(RelativeTableDataSet[!is.na(Medic_1),]$Medic_1, RelativeTableDataSet[!is.na(Medic_1),]$FarmSize_Decimal,
+                                   method = "pearson")
+
+# Replace the missing production cost values using correlation if significant or median if not
+if (Medic_1_Corr_Test$p.value < 0.05 & UseCorr == TRUE){
+  # Use the correlation coefficient
+  RelativeTableDataSet[, MedMedic_1 := (Medic_1_Corr_Coef$coefficients[1] + (Medic_1_Corr_Coef$coefficients[2] * FarmSize_Decimal))]  
+} else {
+  # Use the median value
+  RelativeTableDataSet[, MedMedic_1 := RelativeTableDataSet[, median(Medic_1, na.rm = TRUE)]]
+}
+
+# Generate the correlation coefficients to link production cost with farm size
+# Use Pearsons rank
+Medic_2_Corr_Coef <- lm(Medic_2~FarmSize_Decimal, data = RelativeTableDataSet[!is.na(Medic_2)])
+Medic_2_Corr_Test <- cor.test(RelativeTableDataSet[!is.na(Medic_2),]$Medic_2, RelativeTableDataSet[!is.na(Medic_2),]$FarmSize_Decimal,
+                                   method = "pearson")
+
+# Replace the missing production cost values using correlation if significant or median if not
+if (Medic_2_Corr_Test$p.value < 0.05 & UseCorr == TRUE){
+  # Use the correlation coefficient
+  RelativeTableDataSet[, MedMedic_2 := (Medic_2_Corr_Coef$coefficients[1] + (Medic_2_Corr_Coef$coefficients[2] * FarmSize_Decimal))]  
+} else {
+  # Use the median value
+  RelativeTableDataSet[, MedMedic_2 := RelativeTableDataSet[, median(Medic_2, na.rm = TRUE)]]
+}
+
+# Recalculate the production costs with new estimates
+RelativeTableDataSet[, MedProdCost_1 := (MedWaterS_1 + MedFeed_1 + MedSeed_1 + MedElec_1 + MedLab_1 + MedTrans_1 + MedMedic_1)]
+RelativeTableDataSet[, MedProdCost_2 := (MedWaterS_2 + MedFeed_2 + MedSeed_2 + MedElec_2 + MedLab_2 + MedTrans_2 + MedMedic_2)]
+
+# Calculate the relative gross profit
+# Here the gross profit post COVID / Gross profit pre COVID
+RelativeTableDataSet[, GrossProfit_1 := (Pre_COVID_Yield - ProdCost_1)]
+RelativeTableDataSet[, GrossProfit_2 := (Post_COVID_Yield - ProdCost_2)]
+RelativeTableDataSet[, RelGrossProfit := (GrossProfit_2/GrossProfit_1)]
+RelativeTableDataSet[, PerGrossProfitDiff := (((GrossProfit_2- GrossProfit_1)/GrossProfit_1)*100)]
+RelativeTableDataSet[, GrossProfitMargin_1 := ((Pre_COVID_Yield - ProdCost_1)/ Pre_COVID_Yield)]
+RelativeTableDataSet[, GrossProfitMargin_2 := ((Post_COVID_Yield - ProdCost_1)/ Post_COVID_Yield)]
+RelativeTableDataSet[, RelGrossProfitMargin := (GrossProfitMargin_2/GrossProfitMargin_1)]
+RelativeTableDataSet[, PerGrossProfitMarginDiff := (((GrossProfitMargin_2- GrossProfitMargin_1)/GrossProfitMargin_1)*100)]
+
+# Calculate the relative gross profit for only farms with complete records
+# Here the gross profit post COVID / Gross profit pre COVID
+RelativeTableDataSet[!is.na(WaterS_1) & !is.na(Seed_1) & !is.na(Feed_1) & !is.na(Elec_1) & !is.na(Lab_1) & !is.na(Trans_1)& !is.na(Medic_1)& !is.na(Medic_2) & !is.na(WaterS_2) & !is.na(Seed_2) & !is.na(Feed_2) & !is.na(Elec_2) & !is.na(Lab_2) & !is.na(Trans_2), CompleteGrossProfit_1 := (Pre_COVID_Yield - ProdCost_1)]
+RelativeTableDataSet[!is.na(WaterS_1) & !is.na(Seed_1) & !is.na(Feed_1) & !is.na(Elec_1) & !is.na(Lab_1) & !is.na(Trans_1)& !is.na(Medic_1)& !is.na(Medic_2) & !is.na(WaterS_2) & !is.na(Seed_2) & !is.na(Feed_2) & !is.na(Elec_2) & !is.na(Lab_2) & !is.na(Trans_2), CompleteGrossProfit_2 := (Post_COVID_Yield - ProdCost_2)]
+RelativeTableDataSet[!is.na(WaterS_1) & !is.na(Seed_1) & !is.na(Feed_1) & !is.na(Elec_1) & !is.na(Lab_1) & !is.na(Trans_1)& !is.na(Medic_1)& !is.na(Medic_2) & !is.na(WaterS_2) & !is.na(Seed_2) & !is.na(Feed_2) & !is.na(Elec_2) & !is.na(Lab_2) & !is.na(Trans_2), RelCompleteGrossProfit := (CompleteGrossProfit_2/CompleteGrossProfit_1)]
+
+RelativeTableDataSet[!is.na(WaterS_1) & !is.na(Seed_1) & !is.na(Feed_1) & !is.na(Elec_1) & !is.na(Lab_1) & !is.na(Trans_1)& !is.na(Medic_1)& !is.na(Medic_2) & !is.na(WaterS_2) & !is.na(Seed_2) & !is.na(Feed_2) & !is.na(Elec_2) & !is.na(Lab_2) & !is.na(Trans_2), CompleteGrossProfitMargin_1 := ((Pre_COVID_Yield - ProdCost_1)/Pre_COVID_Yield)]
+RelativeTableDataSet[!is.na(WaterS_1) & !is.na(Seed_1) & !is.na(Feed_1) & !is.na(Elec_1) & !is.na(Lab_1) & !is.na(Trans_1)& !is.na(Medic_1)& !is.na(Medic_2) & !is.na(WaterS_2) & !is.na(Seed_2) & !is.na(Feed_2) & !is.na(Elec_2) & !is.na(Lab_2) & !is.na(Trans_2), CompleteGrossProfitMargin_2 := ((Post_COVID_Yield - ProdCost_2)/Post_COVID_Yield)]
+RelativeTableDataSet[!is.na(WaterS_1) & !is.na(Seed_1) & !is.na(Feed_1) & !is.na(Elec_1) & !is.na(Lab_1) & !is.na(Trans_1)& !is.na(Medic_1)& !is.na(Medic_2) & !is.na(WaterS_2) & !is.na(Seed_2) & !is.na(Feed_2) & !is.na(Elec_2) & !is.na(Lab_2) & !is.na(Trans_2), RelCompleteGrossProfitMargin := (CompleteGrossProfitMargin_2/CompleteGrossProfitMargin_1)]
+
+RelativeTableDataSet[!is.na(WaterS_1) & !is.na(Seed_1) & !is.na(Feed_1) & !is.na(Elec_1) & !is.na(Lab_1) & !is.na(Trans_1)& !is.na(Medic_1)& !is.na(Medic_2) & !is.na(WaterS_2) & !is.na(Seed_2) & !is.na(Feed_2) & !is.na(Elec_2) & !is.na(Lab_2) & !is.na(Trans_2), PerCompleteGrossProfitDiff := (((CompleteGrossProfit_2- CompleteGrossProfit_1)/CompleteGrossProfit_1)*100)]
+
+# Repeat for estimated values
+RelativeTableDataSet[, MedGrossProfit_1 := (Pre_COVID_Yield - MedProdCost_1)]
+RelativeTableDataSet[, MedGrossProfit_2 := (Post_COVID_Yield - MedProdCost_2)]
+RelativeTableDataSet[, MedRelGrossProfit := (MedGrossProfit_2/MedGrossProfit_1)]
+RelativeTableDataSet[, MedPerGrossProfitDiff := (((MedGrossProfit_2- MedGrossProfit_1)/MedGrossProfit_1)*100)]
+
+# Correlations
+# Generate the correlation coefficients to link production cost with farm size
+# Use Pearsons rank
+GrossProfit_1_Corr_Coef <- lm(GrossProfit_1~FarmSize_Decimal, data = RelativeTableDataSet[!is.na(GrossProfit_1)])
+GrossProfit_1_Corr_Test <- cor.test(RelativeTableDataSet[!is.na(GrossProfit_1),]$GrossProfit_1, RelativeTableDataSet[!is.na(GrossProfit_1),]$FarmSize_Decimal,
+                                   method = "pearson")
+# Generate the correlation coefficients to link production cost with farm size
+# Use Pearsons rank
+GrossProfit_2_Corr_Coef <- lm(GrossProfit_2~FarmSize_Decimal, data = RelativeTableDataSet[!is.na(GrossProfit_2)])
+GrossProfit_2_Corr_Test <- cor.test(RelativeTableDataSet[!is.na(GrossProfit_2),]$GrossProfit_2, RelativeTableDataSet[!is.na(GrossProfit_2),]$FarmSize_Decimal,
+                                   method = "pearson")
+
+# Use Pearsons rank
+CompleteGrossProfit_1_Corr_Coef <- lm(CompleteGrossProfit_1~FarmSize_Decimal, data = RelativeTableDataSet[!is.na(CompleteGrossProfit_1)])
+CompleteGrossProfit_1_Corr_Test <- cor.test(RelativeTableDataSet[!is.na(CompleteGrossProfit_1),]$CompleteGrossProfit_1, RelativeTableDataSet[!is.na(CompleteGrossProfit_1),]$FarmSize_Decimal,
+                                   method = "pearson")
+# Generate the correlation coefficients to link production cost with farm size
+# Use Pearsons rank
+CompleteGrossProfit_2_Corr_Coef <- lm(CompleteGrossProfit_2~FarmSize_Decimal, data = RelativeTableDataSet[!is.na(CompleteGrossProfit_2)])
+CompleteGrossProfit_2_Corr_Test <- cor.test(RelativeTableDataSet[!is.na(CompleteGrossProfit_2),]$CompleteGrossProfit_2, RelativeTableDataSet[!is.na(CompleteGrossProfit_2),]$FarmSize_Decimal,
+                                   method = "pearson")
+
+RelGrossProfit_Corr_Coef <- lm(RelGrossProfit~FarmSize_Decimal, data = RelativeTableDataSet[!is.na(RelGrossProfit)])
+RelGrossProfit_Corr_Test <- cor.test(RelativeTableDataSet[!is.na(RelGrossProfit),]$RelGrossProfit, RelativeTableDataSet[!is.na(RelGrossProfit),]$FarmSize_Decimal,
+                                   method = "pearson")
+
+RelCompleteGrossProfit_Corr_Coef <- lm(RelCompleteGrossProfit~FarmSize_Decimal, data = RelativeTableDataSet[!is.na(RelCompleteGrossProfit)])
+RelCompleteGrossProfit_Corr_Test <- cor.test(RelativeTableDataSet[!is.na(RelCompleteGrossProfit),]$RelCompleteGrossProfit, RelativeTableDataSet[!is.na(RelCompleteGrossProfit),]$FarmSize_Decimal,
+                                   method = "pearson")
+
+MedRelGrossProfit_Corr_Coef <- lm(MedRelGrossProfit~FarmSize_Decimal, data = RelativeTableDataSet[!is.na(MedRelGrossProfit)])
+MedRelGrossProfit_Corr_Test <- cor.test(RelativeTableDataSet[!is.na(MedRelGrossProfit),]$MedRelGrossProfit, RelativeTableDataSet[!is.na(MedRelGrossProfit),]$FarmSize_Decimal,
+                                   method = "pearson")
+
+# Generate the data frame for paper
+# This has the parameter with pre and post values, percentage change, number of farms (farms showing decrease), Correlation to farm size with coef and P-val
+PaperTableDF <- data.frame(rbind(
+  c("Reported Revenue", RelativeTableDataSet[, median(Pre_COVID_Yield, na.rm = TRUE)], 
+                        RelativeTableDataSet[, median(Post_COVID_Yield, na.rm = TRUE)],
+                        RelativeTableDataSet[, mad(Pre_COVID_Yield, na.rm = TRUE)], 
+                        RelativeTableDataSet[, mad(Post_COVID_Yield, na.rm = TRUE)],
+                        RelativeTableDataSet[!is.na(Pre_COVID_Yield) & !is.na(Post_COVID_Yield), .N],
+                        RelativeTableDataSet[!is.na(Pre_COVID_Yield) & !is.na(Post_COVID_Yield) & Post_COVID_Yield < Pre_COVID_Yield, .N],
+    round(RelativeTableDataSet[, median(PerDiff_COVID_Yield, na.rm = TRUE)], digits = 1),
+    round(PreCovidYield_Corr_Coef$coefficients[1], digits = 1),
+    round(PreCovidYield_Corr_Coef$coefficients[2], digits = 1),
+    round(PreCovidYield_Corr_Test$p.value, digits = 1),
+    round(PostCovidYield_Corr_Coef$coefficients[1], digits = 1),
+    round(PostCovidYield_Corr_Coef$coefficients[2], digits = 1),
+    round(PostCovidYield_Corr_Test$p.value, digits = 1)),
+  c("Production Costs", RelativeTableDataSet[, median(ProdCost_1, na.rm = TRUE)], 
+                        RelativeTableDataSet[, median(ProdCost_2, na.rm = TRUE)],
+                        RelativeTableDataSet[, mad(ProdCost_1, na.rm = TRUE)], 
+                        RelativeTableDataSet[, mad(ProdCost_2, na.rm = TRUE)],
+                        RelativeTableDataSet[!is.na(ProdCost_1) & !is.na(ProdCost_2), .N],
+                        RelativeTableDataSet[!is.na(ProdCost_1) & !is.na(ProdCost_2) & ProdCost_2 < ProdCost_1, .N],
+    round(RelativeTableDataSet[, median(PerProdCostDiff, na.rm = TRUE)], digits = 1),
+    round(ProdCost_1_Corr_Coef$coefficients[1], digits = 1),
+    round(ProdCost_1_Corr_Coef$coefficients[2], digits = 1),
+    round(ProdCost_1_Corr_Test$p.value, digits = 1),
+    round(ProdCost_2_Corr_Coef$coefficients[1], digits = 1),
+    round(ProdCost_2_Corr_Coef$coefficients[2], digits = 1),
+    round(ProdCost_2_Corr_Test$p.value, digits = 1)),
+  c("Feed Costs", RelativeTableDataSet[, median(Feed_1, na.rm = TRUE)], 
+                        RelativeTableDataSet[, median(Feed_2, na.rm = TRUE)],
+    RelativeTableDataSet[, mad(Feed_1, na.rm = TRUE)], 
+                        RelativeTableDataSet[, mad(Feed_2, na.rm = TRUE)],
+                        RelativeTableDataSet[!is.na(Feed_1) & !is.na(Feed_2), .N],
+                        RelativeTableDataSet[!is.na(Feed_1) & !is.na(Feed_2) & Feed_2 < Feed_1, .N],
+    round(RelativeTableDataSet[, median(PerFeedDiff, na.rm = TRUE)], digits = 1),
+    round(Feed_1_Corr_Coef$coefficients[1], digits = 1),
+    round(Feed_1_Corr_Coef$coefficients[2], digits = 1),
+    round(Feed_1_Corr_Test$p.value, digits = 1),
+    round(Feed_2_Corr_Coef$coefficients[1], digits = 1),
+    round(Feed_2_Corr_Coef$coefficients[2], digits = 1),
+    round(Feed_2_Corr_Test$p.value, digits = 1)),
+  c("Seed Costs", RelativeTableDataSet[, median(Seed_1, na.rm = TRUE)], 
+                        RelativeTableDataSet[, median(Seed_2, na.rm = TRUE)],
+    RelativeTableDataSet[, mad(Seed_1, na.rm = TRUE)], 
+                        RelativeTableDataSet[, mad(Seed_2, na.rm = TRUE)],
+                        RelativeTableDataSet[!is.na(Seed_1) & !is.na(Seed_2), .N],
+                        RelativeTableDataSet[!is.na(Seed_1) & !is.na(Seed_2) & Seed_2 < Seed_1, .N],
+    round(RelativeTableDataSet[, median(PerSeedDiff, na.rm = TRUE)], digits = 1),
+    round(Seed_1_Corr_Coef$coefficients[1], digits = 1),
+    round(Seed_1_Corr_Coef$coefficients[2], digits = 1),
+    round(Seed_1_Corr_Test$p.value, digits = 1),
+    round(Seed_2_Corr_Coef$coefficients[1], digits = 1),
+    round(Seed_2_Corr_Coef$coefficients[2], digits = 1),
+    round(Seed_2_Corr_Test$p.value, digits = 1)),
+  c("Water Supply Costs", RelativeTableDataSet[, median(WaterS_1, na.rm = TRUE)], 
+                        RelativeTableDataSet[, median(WaterS_2, na.rm = TRUE)],
+    RelativeTableDataSet[, mad(WaterS_1, na.rm = TRUE)], 
+                        RelativeTableDataSet[, mad(WaterS_2, na.rm = TRUE)],
+                        RelativeTableDataSet[!is.na(WaterS_1) & !is.na(WaterS_2), .N],
+                        RelativeTableDataSet[!is.na(WaterS_1) & !is.na(WaterS_2) & WaterS_2 < WaterS_1, .N],
+    round(RelativeTableDataSet[, median(PerWaterSDiff, na.rm = TRUE)], digits = 1),
+    round(WaterS_1_Corr_Coef$coefficients[1], digits = 1),
+    round(WaterS_1_Corr_Coef$coefficients[2], digits = 1),
+    round(WaterS_1_Corr_Test$p.value, digits = 1),
+    round(WaterS_2_Corr_Coef$coefficients[1], digits = 1),
+    round(WaterS_2_Corr_Coef$coefficients[2], digits = 1),
+    round(WaterS_2_Corr_Test$p.value, digits = 1)),
+  c("Electricity Costs", RelativeTableDataSet[, median(Elec_1, na.rm = TRUE)], 
+                        RelativeTableDataSet[, median(Elec_2, na.rm = TRUE)],
+    RelativeTableDataSet[, mad(Elec_1, na.rm = TRUE)], 
+                        RelativeTableDataSet[, mad(Elec_2, na.rm = TRUE)],
+                        RelativeTableDataSet[!is.na(Elec_1) & !is.na(Elec_2), .N],
+                        RelativeTableDataSet[!is.na(Elec_1) & !is.na(Elec_2) & Elec_2 < Elec_1, .N],
+    round(RelativeTableDataSet[, median(PerElecDiff, na.rm = TRUE)], digits = 1),
+    round(Elec_1_Corr_Coef$coefficients[1], digits = 1),
+    round(Elec_1_Corr_Coef$coefficients[2], digits = 1),
+    round(Elec_1_Corr_Test$p.value, digits = 1),
+    round(Elec_2_Corr_Coef$coefficients[1], digits = 1),
+    round(Elec_2_Corr_Coef$coefficients[2], digits = 1),
+    round(Elec_2_Corr_Test$p.value, digits = 1)),
+  c("Transport Costs", RelativeTableDataSet[, median(Trans_1, na.rm = TRUE)], 
+                        RelativeTableDataSet[, median(Trans_2, na.rm = TRUE)],
+    RelativeTableDataSet[, mad(Trans_1, na.rm = TRUE)], 
+                        RelativeTableDataSet[, mad(Trans_2, na.rm = TRUE)],
+                        RelativeTableDataSet[!is.na(Trans_1) & !is.na(Trans_2), .N],
+                        RelativeTableDataSet[!is.na(Trans_1) & !is.na(Trans_2) & Trans_2 < Trans_1, .N],
+    round(RelativeTableDataSet[, median(PerTransDiff, na.rm = TRUE)], digits= 1),
+    round(Trans_1_Corr_Coef$coefficients[1], digits= 1), 
+    round(Trans_1_Corr_Coef$coefficients[2], digits= 1),
+    round(Trans_1_Corr_Test$p.value, digits= 1),
+    round(Trans_2_Corr_Coef$coefficients[1], digits= 1),
+    round(Trans_2_Corr_Coef$coefficients[2], digits= 1),
+    round(Trans_2_Corr_Test$p.value, digit= 1)),
+  c("Labour Costs", RelativeTableDataSet[, median(Lab_1, na.rm = TRUE)], 
+                        RelativeTableDataSet[, median(Lab_2, na.rm = TRUE)],
+    RelativeTableDataSet[, mad(Lab_1, na.rm = TRUE)], 
+                        RelativeTableDataSet[, mad(Lab_2, na.rm = TRUE)],
+                        RelativeTableDataSet[!is.na(Lab_1) & !is.na(Lab_2), .N],
+                        RelativeTableDataSet[!is.na(Lab_1) & !is.na(Lab_2) & Lab_2 < Lab_1, .N],
+    round(RelativeTableDataSet[, median(PerLabDiff, na.rm = TRUE)], digits = 1),
+    round(Lab_1_Corr_Coef$coefficients[1], digits = 1),
+    round(Lab_1_Corr_Coef$coefficients[2], digits = 1),
+    round(Lab_1_Corr_Test$p.value, digits = 1),
+    round(Lab_2_Corr_Coef$coefficients[1], digits = 1),
+    round(Lab_2_Corr_Coef$coefficients[2], digits = 1),
+    round(Lab_2_Corr_Test$p.value, digits = 1)),
+  c("Medicine Costs", RelativeTableDataSet[, median(Medic_1, na.rm = TRUE)], 
+                        RelativeTableDataSet[, median(Medic_2, na.rm = TRUE)],
+    RelativeTableDataSet[, mad(Medic_1, na.rm = TRUE)], 
+                        RelativeTableDataSet[, mad(Medic_2, na.rm = TRUE)],
+                        RelativeTableDataSet[!is.na(Medic_1) & !is.na(Medic_2), .N],
+                        RelativeTableDataSet[!is.na(Medic_1) & !is.na(Medic_2) & Medic_2 < Medic_1, .N],
+    round(RelativeTableDataSet[, median(PerMedicDiff, na.rm = TRUE)], digits = 1),
+    round(Medic_1_Corr_Coef$coefficients[1], digits = 1),
+    round(Medic_1_Corr_Coef$coefficients[2], digits = 1),
+    round(Medic_1_Corr_Test$p.value, digits = 1),
+    round(Medic_2_Corr_Coef$coefficients[1], digits = 1),
+    round(Medic_2_Corr_Coef$coefficients[2], digits = 1),
+    round(Medic_2_Corr_Test$p.value, digits = 1)),
+  c("Gross Profit Farms Complete Records", RelativeTableDataSet[, median(CompleteGrossProfit_1, na.rm = TRUE)], 
+                        RelativeTableDataSet[, median(CompleteGrossProfit_2, na.rm = TRUE)],
+    RelativeTableDataSet[, mad(CompleteGrossProfit_1, na.rm = TRUE)], 
+                        RelativeTableDataSet[, mad(CompleteGrossProfit_2, na.rm = TRUE)],
+                        RelativeTableDataSet[!is.na(CompleteGrossProfit_1) & !is.na(CompleteGrossProfit_2), .N],
+                        RelativeTableDataSet[!is.na(CompleteGrossProfit_1) & !is.na(CompleteGrossProfit_2) & CompleteGrossProfit_2 < CompleteGrossProfit_1, .N],
+    round(RelativeTableDataSet[, median(PerCompleteGrossProfitDiff, na.rm = TRUE)], digits = 1),
+    round(CompleteGrossProfit_1_Corr_Coef$coefficients[1], digits = 1),
+    round(CompleteGrossProfit_1_Corr_Coef$coefficients[2], digits = 1),
+    round(CompleteGrossProfit_1_Corr_Test$p.value, digits = 1),
+    round(CompleteGrossProfit_2_Corr_Coef$coefficients[1], digits = 1),
+    round(CompleteGrossProfit_2_Corr_Coef$coefficients[2], digits = 1),
+    round(CompleteGrossProfit_2_Corr_Test$p.value, digits = 1)),
+  c("Gross Profit All Farms", RelativeTableDataSet[, median(GrossProfit_1, na.rm = TRUE)], 
+                        RelativeTableDataSet[, median(GrossProfit_2, na.rm = TRUE)],
+    RelativeTableDataSet[, mad(GrossProfit_1, na.rm = TRUE)], 
+                        RelativeTableDataSet[, mad(GrossProfit_2, na.rm = TRUE)],
+                        RelativeTableDataSet[!is.na(GrossProfit_1) & !is.na(GrossProfit_2), .N],
+                        RelativeTableDataSet[!is.na(GrossProfit_1) & !is.na(GrossProfit_2) & GrossProfit_2 < GrossProfit_1, .N],
+    round(RelativeTableDataSet[, median(PerGrossProfitDiff, na.rm = TRUE)], digits = 1),
+    round(GrossProfit_1_Corr_Coef$coefficients[1], digits = 1),
+    round(GrossProfit_1_Corr_Coef$coefficients[2], digits = 1),
+    round(GrossProfit_1_Corr_Test$p.value, digits = 1),
+    round(GrossProfit_2_Corr_Coef$coefficients[1], digits = 1),
+    round(GrossProfit_2_Corr_Coef$coefficients[2], digits = 1),
+    round(GrossProfit_2_Corr_Test$p.value, digits = 1)),
+  c("Relative Gross Profit", 1, 
+                        RelativeTableDataSet[, median(RelGrossProfit, na.rm = TRUE)],
+                              NA,
+                        RelativeTableDataSet[, mad(RelGrossProfit, na.rm = TRUE)],
+                        RelativeTableDataSet[!is.na(RelGrossProfit) & !is.na(RelGrossProfit), .N],
+                        RelativeTableDataSet[!is.na(RelGrossProfit) & !is.na(RelGrossProfit) & RelGrossProfit < 1, .N],
+    NA,
+    NA,
+    NA,
+    NA,
+    round(RelGrossProfit_Corr_Coef$coefficients[1], digits = 1),
+    round(RelGrossProfit_Corr_Coef$coefficients[2], digits = 1),
+    round(RelGrossProfit_Corr_Test$p.value, digits = 1)),
+  c("Relative Gross Profit Margin", 1, 
+                        RelativeTableDataSet[, median(RelGrossProfitMargin, na.rm = TRUE)],
+                              NA,
+                        RelativeTableDataSet[, mad(RelGrossProfitMargin, na.rm = TRUE)],
+                        RelativeTableDataSet[!is.na(RelGrossProfitMargin) & !is.na(RelGrossProfitMargin), .N],
+                        RelativeTableDataSet[!is.na(RelGrossProfitMargin) & !is.na(RelGrossProfitMargin) & RelGrossProfitMargin < 1, .N],
+    NA,
+    NA,
+    NA,
+    NA,
+    NA,
+    NA,
+    NA),
+  c("Relative Gross Profit Margin Completed Records", 1, 
+                        RelativeTableDataSet[, median(RelCompleteGrossProfitMargin, na.rm = TRUE)],
+                              NA,
+                        RelativeTableDataSet[, mad(RelCompleteGrossProfitMargin, na.rm = TRUE)],
+                        RelativeTableDataSet[!is.na(RelCompleteGrossProfitMargin) & !is.na(RelCompleteGrossProfitMargin), .N],
+                        RelativeTableDataSet[!is.na(RelCompleteGrossProfitMargin) & !is.na(RelCompleteGrossProfitMargin) & RelCompleteGrossProfitMargin < 1, .N],
+    NA,
+    NA,
+    NA,
+    NA,
+    NA,
+    NA,
+    NA),
+  c("Relative Gross Profit Farms Complete Records", 1, 
+                        RelativeTableDataSet[, median(RelCompleteGrossProfit, na.rm = TRUE)],
+                        1,
+                        RelativeTableDataSet[, mad(RelCompleteGrossProfit, na.rm = TRUE)],
+                        RelativeTableDataSet[!is.na(RelCompleteGrossProfit) & !is.na(RelCompleteGrossProfit), .N],
+                        RelativeTableDataSet[!is.na(RelCompleteGrossProfit) & !is.na(RelCompleteGrossProfit) & RelCompleteGrossProfit < 1, .N],
+    NA,
+    NA,
+    NA,
+    NA,
+    round(RelCompleteGrossProfit_Corr_Coef$coefficients[1], digits = 1),
+    round(RelCompleteGrossProfit_Corr_Coef$coefficients[2], digits = 1),
+    round(RelCompleteGrossProfit_Corr_Test$p.value, digits = 1)),
+  c("Relative Gross Profit Estimate Costs", 1, 
+                        RelativeTableDataSet[, median(MedRelGrossProfit, na.rm = TRUE)],
+                        1, 
+                        RelativeTableDataSet[, mad(MedRelGrossProfit, na.rm = TRUE)],
+                        RelativeTableDataSet[!is.na(MedRelGrossProfit) & !is.na(MedRelGrossProfit), .N],
+                        RelativeTableDataSet[!is.na(MedRelGrossProfit) & !is.na(MedRelGrossProfit) & RelGrossProfit < 1, .N],
+    NA,
+    NA,
+    NA,
+    NA,
+    round(MedRelGrossProfit_Corr_Coef$coefficients[1], digits = 1),
+    round(MedRelGrossProfit_Corr_Coef$coefficients[2], digits = 1),
+    round(MedRelGrossProfit_Corr_Test$p.value, digits = 1)),
+  c("Relative Revenue", 1, 
+                        RelativeTableDataSet[, median(RelRevenue, na.rm = TRUE)],
+                        1, 
+                        RelativeTableDataSet[, mad(RelRevenue, na.rm = TRUE)],
+                        RelativeTableDataSet[!is.na(RelRevenue) & !is.na(RelRevenue), .N],
+                        RelativeTableDataSet[!is.na(RelRevenue) & !is.na(RelRevenue) & RelRevenue < 1, .N],
+    NA,
+    NA,
+    NA,
+    NA,
+    round(RelRevenue_Corr_Coef$coefficients[1], digits = 4),
+    round(RelRevenue_Corr_Coef$coefficients[2], digits = 4),
+    round(RelRevenue__Corr_Test$p.value, digits = 4)),
+  c("Relative Production Costs", 1, 
+                        RelativeTableDataSet[, median(RelProdCost, na.rm = TRUE)],
+                        1, 
+                        RelativeTableDataSet[, mad(RelProdCost, na.rm = TRUE)],
+                        RelativeTableDataSet[!is.na(RelProdCost) & !is.na(RelProdCost), .N],
+                        RelativeTableDataSet[!is.na(RelProdCost) & !is.na(RelProdCost) & RelProdCost < 1, .N],
+    NA,
+    NA,
+    NA,
+    NA,
+    round(RelProd_Corr_Coef$coefficients[1], digits = 4),
+    round(RelProd_Corr_Coef$coefficients[2], digits = 4),
+    round(RelProd__Corr_Test$p.value, digits = 4)),
+  c("Relative Feed Costs", 1, 
+                        RelativeTableDataSet[, median(RelFeedCost, na.rm = TRUE)],
+                        1, 
+                        RelativeTableDataSet[, mad(RelFeedCost, na.rm = TRUE)],
+                        RelativeTableDataSet[!is.na(RelFeedCost) & !is.na(RelFeedCost), .N],
+                        RelativeTableDataSet[!is.na(RelFeedCost) & !is.na(RelFeedCost) & RelFeedCost < 1, .N],
+    NA,
+    NA,
+    NA,
+    NA,
+    round(RelFeed_Corr_Coef$coefficients[1], digits = 4),
+    round(RelFeed_Corr_Coef$coefficients[2], digits = 4),
+    round(RelFeed_Corr_Test$p.value, digits = 4)),
+  c("Relative Seed Costs", 1, 
+                        RelativeTableDataSet[, median(RelSeedCost, na.rm = TRUE)],
+                        1, 
+                        RelativeTableDataSet[, mad(RelSeedCost, na.rm = TRUE)],
+                        RelativeTableDataSet[!is.na(RelSeedCost) & !is.na(RelSeedCost), .N],
+                        RelativeTableDataSet[!is.na(RelSeedCost) & !is.na(RelSeedCost) & RelSeedCost < 1, .N],
+    NA,
+    NA,
+    NA,
+    NA,
+    round(RelSeed_Corr_Coef$coefficients[1], digits = 4),
+    round(RelSeed_Corr_Coef$coefficients[2], digits = 4),
+    round(RelSeed__Corr_Test$p.value, digits = 4)),
+  c("Relative Water Supply Costs", 1, 
+                        RelativeTableDataSet[, median(RelWaterSCost, na.rm = TRUE)],
+                        1, 
+                        RelativeTableDataSet[, mad(RelWaterSCost, na.rm = TRUE)],
+                        RelativeTableDataSet[!is.na(RelWaterSCost) & !is.na(RelWaterSCost), .N],
+                        RelativeTableDataSet[!is.na(RelWaterSCost) & !is.na(RelWaterSCost) & RelWaterSCost < 1, .N],
+    NA,
+    NA,
+    NA,
+    NA,
+    round(RelWaterS_Corr_Coef$coefficients[1], digits = 4),
+    round(RelWaterS_Corr_Coef$coefficients[2], digits = 4),
+    round(RelWaterS__Corr_Test$p.value, digits = 4)),
+  c("Relative Transport Costs", 1, 
+                        RelativeTableDataSet[, median(RelTransCost, na.rm = TRUE)],
+                        1, 
+                        RelativeTableDataSet[, mad(RelTransCost, na.rm = TRUE)],
+                        RelativeTableDataSet[!is.na(RelTransCost) & !is.na(RelTransCost), .N],
+                        RelativeTableDataSet[!is.na(RelTransCost) & !is.na(RelTransCost) & RelTransCost < 1, .N],
+    NA,
+    NA,
+    NA,
+    NA,
+    round(RelTrans_Corr_Coef$coefficients[1], digits = 4),
+    round(RelTrans_Corr_Coef$coefficients[2], digits = 4),
+    round(RelTrans__Corr_Test$p.value, digits = 4)),
+  c("Relative Electricity Costs", 1, 
+                        RelativeTableDataSet[, median(RelElecCost, na.rm = TRUE)],
+                        1, 
+                        RelativeTableDataSet[, mad(RelElecCost, na.rm = TRUE)],
+                        RelativeTableDataSet[!is.na(RelElecCost) & !is.na(RelElecCost), .N],
+                        RelativeTableDataSet[!is.na(RelElecCost) & !is.na(RelElecCost) & RelElecCost < 1, .N],
+    NA,
+    NA,
+    NA,
+    NA,
+    round(RelElec_Corr_Coef$coefficients[1], digits = 4),
+    round(RelElec_Corr_Coef$coefficients[2], digits = 4),
+    round(RelElec__Corr_Test$p.value, digits = 4)),
+  c("Relative Labour Costs", 1, 
+                        RelativeTableDataSet[, median(RelLabCost, na.rm = TRUE)],
+                        1, 
+                        RelativeTableDataSet[, mad(RelLabCost, na.rm = TRUE)],
+                        RelativeTableDataSet[!is.na(RelLabCost) & !is.na(RelLabCost), .N],
+                        RelativeTableDataSet[!is.na(RelLabCost) & !is.na(RelLabCost) & RelLabCost < 1, .N],
+    NA,
+    NA,
+    NA,
+    NA,
+    round(RelLab_Corr_Coef$coefficients[1], digits = 4),
+    round(RelLab_Corr_Coef$coefficients[2], digits = 4),
+    round(RelLab__Corr_Test$p.value, digits = 4)),
+  c("Relative Medicine Costs", 1, 
+                        RelativeTableDataSet[, median(RelMedicCost, na.rm = TRUE)],
+                        1, 
+                        RelativeTableDataSet[, mad(RelMedicCost, na.rm = TRUE)],
+                        RelativeTableDataSet[!is.na(RelMedicCost) & !is.na(RelMedicCost), .N],
+                        RelativeTableDataSet[!is.na(RelMedicCost) & !is.na(RelMedicCost) & RelMedicCost < 1, .N],
+    NA,
+    NA,
+    NA,
+    NA,
+    round(RelMedic_Corr_Coef$coefficients[1], digits = 4),
+    round(RelMedic_Corr_Coef$coefficients[2], digits = 4),
+    round(RelMedic__Corr_Test$p.value, digits = 4))
+))
+colnames(PaperTableDF) <- c("Parameter", "PreCOVID", "PostCOVID", "PreCOVID_MAD", "PostCOVID_MAD", "NoFarms", "NoFarmsDecr", "PercentChange", "PreC_INT", "PreC_Coeff", "PreC_P", "PostC_INT", "PostC_Coeff", "PostC_P")
+
+library(kableExtra)
+OutputTable <- kable(PaperTableDF) %>%
+  kable_paper(bootstrap_options = "striped", full_width = F)
+
+
+```
+
+### Relative Change in the Margins
+
+The model approach has not added any understanding to the approach and therefore we are going to use a relative margin approach.  Here the change in product value and cost is made relative to the pre-COVID product price.  This will be performed for each farm, using the information given (provided there is data pre and postCOVID) and will not use any mean or estimated values.
+
+Here the following will be calculated: 
+
+*Relative Profit = Relative Cost of Product - Relative Cost of Production
+*Relative Profit Margin = Relative Cost of Product - Relative Cost of Production / Relative Cost of Production
+
+In this section a table is going to be produced that can go into the paper.
+
+`r OutputTable`
+
+
+```{r Per hectare values, include=FALSE}
+
+
+# Generate the data set to use
+PerHectareTableDataSet <- RawData_COSTS[, .(FarmID, FarmSize_Decimal, WaterS_1, WaterS_2, Feed_1, Feed_2, Seed_1, Seed_2, Elec_1, Elec_2, Lab_1, Lab_2, Trans_1, Trans_2, Medic_1, Medic_2, ProdCost_1, ProdCost_2)]
+
+# Merge with the yield data
+PerHectareTableDataSet <- merge(PerHectareTableDataSet, Yield_Table, by = "FarmID")
+setnames(PerHectareTableDataSet, "FarmSize_Decimal.x", "FarmSize_Decimal")
+
+# Generate the percentage difference for the production costs
+PerHectareTableDataSet[, RevenuePerHectare_2 := (Post_COVID_Yield / (FarmSize_Decimal * 0.00404648))]
+PerHectareTableDataSet[, ProdCostPerHectare_2 := (ProdCost_2 / (FarmSize_Decimal * 0.00404648))]
+PerHectareTableDataSet[, FeedPerHectare_2 := (Feed_2 /(FarmSize_Decimal * 0.00404648))]
+PerHectareTableDataSet[, SeedPerHectare_2 := (Seed_2 / (FarmSize_Decimal * 0.00404648))]
+PerHectareTableDataSet[, WaterSPerHectare_2 := (WaterS_2  / (FarmSize_Decimal * 0.00404648))]
+PerHectareTableDataSet[, ElecPerHectare_2 := (Elec_2 / (FarmSize_Decimal * 0.00404648))]
+PerHectareTableDataSet[, TransPerHectare_2 := (Trans_2 / (FarmSize_Decimal * 0.00404648))]
+PerHectareTableDataSet[, LabPerHectare_2 := (Lab_2 / (FarmSize_Decimal * 0.00404648))]
+PerHectareTableDataSet[, MedicPerHectare_2 := (Medic_2 / (FarmSize_Decimal * 0.00404648))]
+
+PerHectareTableDataSet[, RevenuePerHectare_1 := (Pre_COVID_Yield / (FarmSize_Decimal * 0.00404648))]
+PerHectareTableDataSet[, ProdCostPerHectare_1 := (ProdCost_1 / (FarmSize_Decimal * 0.00404648))]
+PerHectareTableDataSet[, FeedPerHectare_1 := (Feed_1 /(FarmSize_Decimal * 0.00404648))]
+PerHectareTableDataSet[, SeedPerHectare_1 := (Seed_1 / (FarmSize_Decimal * 0.00404648))]
+PerHectareTableDataSet[, WaterSPerHectare_1 := (WaterS_1  / (FarmSize_Decimal * 0.00404648))]
+PerHectareTableDataSet[, ElecPerHectare_1 := (Elec_1 / (FarmSize_Decimal * 0.00404648))]
+PerHectareTableDataSet[, TransPerHectare_1 := (Trans_1 / (FarmSize_Decimal * 0.00404648))]
+PerHectareTableDataSet[, LabPerHectare_1 := (Lab_1 / (FarmSize_Decimal * 0.00404648))]
+PerHectareTableDataSet[, MedicPerHectare_1 := (Medic_1 / (FarmSize_Decimal * 0.00404648))]
+
+PerHectareTableDataSet[, PerChangeRevenuePerHectare := (((RevenuePerHectare_2 - RevenuePerHectare_1)/ RevenuePerHectare_1) * 100)]
+PerHectareTableDataSet[, PerChangeProdCostPerHectare := (((ProdCostPerHectare_2 - ProdCostPerHectare_1)/ ProdCostPerHectare_1) * 100)]
+PerHectareTableDataSet[, PerChangeFeedPerHectare := (((FeedPerHectare_2 - FeedPerHectare_1)/ FeedPerHectare_1) * 100)]
+PerHectareTableDataSet[, PerChangeSeedPerHectare := (((SeedPerHectare_2 - SeedPerHectare_1)/ SeedPerHectare_1) * 100)]
+PerHectareTableDataSet[, PerChangeWaterSPerHectare := (((WaterSPerHectare_2 - WaterSPerHectare_1)/ WaterSPerHectare_1) * 100)]
+PerHectareTableDataSet[, PerChangeElecPerHectare := (((ElecPerHectare_2 - ElecPerHectare_1)/ ElecPerHectare_1) * 100)]
+PerHectareTableDataSet[, PerChangeTransPerHectare := (((TransPerHectare_2 - TransPerHectare_1)/ TransPerHectare_1) * 100)]
+PerHectareTableDataSet[, PerChangeLabPerHectare := (((LabPerHectare_2 - LabPerHectare_1)/ LabPerHectare_1) * 100)]
+PerHectareTableDataSet[, PerChangeMedicPerHectare := (((MedicPerHectare_2 - MedicPerHectare_1)/ MedicPerHectare_1) * 100)]
+
+PaperTableDF2 <- data.frame(rbind(
+  c("Reported Revenue Per Hectare", PerHectareTableDataSet[, median(RevenuePerHectare_1, na.rm = TRUE)], 
+                        PerHectareTableDataSet[, median(RevenuePerHectare_2, na.rm = TRUE)],
+                        PerHectareTableDataSet[, mad(RevenuePerHectare_1, na.rm = TRUE)], 
+                        PerHectareTableDataSet[, mad(RevenuePerHectare_2, na.rm = TRUE)],
+                        PerHectareTableDataSet[!is.na(RevenuePerHectare_1) & !is.na(RevenuePerHectare_2), .N],
+                        PerHectareTableDataSet[!is.na(RevenuePerHectare_1) & !is.na(RevenuePerHectare_2) & RevenuePerHectare_2 < RevenuePerHectare_1, .N],
+                        PerHectareTableDataSet[, mean(PerChangeRevenuePerHectare, na.rm = TRUE)]),
+  c("Production Costs Per Hectare", PerHectareTableDataSet[, median(ProdCostPerHectare_1, na.rm = TRUE)], 
+                        PerHectareTableDataSet[, median(ProdCostPerHectare_2, na.rm = TRUE)],
+                        PerHectareTableDataSet[, mad(ProdCostPerHectare_1, na.rm = TRUE)], 
+                        PerHectareTableDataSet[, mad(ProdCostPerHectare_2, na.rm = TRUE)],
+                        PerHectareTableDataSet[!is.na(ProdCostPerHectare_1) & !is.na(ProdCostPerHectare_2), .N],
+                        PerHectareTableDataSet[!is.na(ProdCostPerHectare_1) & !is.na(ProdCostPerHectare_2) & ProdCostPerHectare_2 < ProdCostPerHectare_1, .N],
+    PerHectareTableDataSet[, mean(PerChangeProdCostPerHectare, na.rm = TRUE)]
+    ),
+  c("Feed Costs Per Hectare", PerHectareTableDataSet[, median(FeedPerHectare_1, na.rm = TRUE)], 
+                        PerHectareTableDataSet[, median(FeedPerHectare_2, na.rm = TRUE)],
+    PerHectareTableDataSet[, mad(FeedPerHectare_1, na.rm = TRUE)], 
+                        PerHectareTableDataSet[, mad(FeedPerHectare_2, na.rm = TRUE)],
+                        PerHectareTableDataSet[!is.na(FeedPerHectare_1) & !is.na(FeedPerHectare_2), .N],
+                        PerHectareTableDataSet[!is.na(FeedPerHectare_1) & !is.na(FeedPerHectare_2) & FeedPerHectare_2 < FeedPerHectare_1, .N],
+    PerHectareTableDataSet[, mean(PerChangeFeedPerHectare, na.rm = TRUE)]
+    ),
+  c("Seed Costs Per Hectare", PerHectareTableDataSet[, median(SeedPerHectare_1, na.rm = TRUE)], 
+                        PerHectareTableDataSet[, median(SeedPerHectare_2, na.rm = TRUE)],
+    PerHectareTableDataSet[, mad(SeedPerHectare_1, na.rm = TRUE)], 
+                        PerHectareTableDataSet[, mad(SeedPerHectare_2, na.rm = TRUE)],
+                        PerHectareTableDataSet[!is.na(SeedPerHectare_1) & !is.na(SeedPerHectare_2), .N],
+                        PerHectareTableDataSet[!is.na(SeedPerHectare_1) & !is.na(SeedPerHectare_2) & SeedPerHectare_2 < SeedPerHectare_1, .N],
+    PerHectareTableDataSet[, mean(PerChangeSeedPerHectare, na.rm = TRUE)]
+    ),
+  c("Water Supply Costs Per Hectare", PerHectareTableDataSet[, median(WaterSPerHectare_1, na.rm = TRUE)], 
+                        PerHectareTableDataSet[, median(WaterSPerHectare_2, na.rm = TRUE)],
+    PerHectareTableDataSet[, mad(WaterSPerHectare_1, na.rm = TRUE)], 
+                        PerHectareTableDataSet[, mad(WaterSPerHectare_2, na.rm = TRUE)],
+                        PerHectareTableDataSet[!is.na(WaterSPerHectare_1) & !is.na(WaterSPerHectare_2), .N],
+                        PerHectareTableDataSet[!is.na(WaterSPerHectare_1) & !is.na(WaterSPerHectare_2) & WaterSPerHectare_2 < WaterSPerHectare_1, .N],
+    PerHectareTableDataSet[, mean(PerChangeWaterSPerHectare, na.rm = TRUE)]
+    ),
+  c("Electricity Costs Per Hectare", PerHectareTableDataSet[, median(ElecPerHectare_1, na.rm = TRUE)], 
+                        PerHectareTableDataSet[, median(ElecPerHectare_2, na.rm = TRUE)],
+    PerHectareTableDataSet[, mad(ElecPerHectare_1, na.rm = TRUE)], 
+                        PerHectareTableDataSet[, mad(ElecPerHectare_2, na.rm = TRUE)],
+                        PerHectareTableDataSet[!is.na(ElecPerHectare_1) & !is.na(ElecPerHectare_2), .N],
+                        PerHectareTableDataSet[!is.na(ElecPerHectare_1) & !is.na(ElecPerHectare_2) & ElecPerHectare_2 < ElecPerHectare_1, .N],
+    PerHectareTableDataSet[, mean(PerChangeElecPerHectare, na.rm = TRUE)]
+    ),
+  c("Transport Costs Per Hectare", PerHectareTableDataSet[, median(TransPerHectare_1, na.rm = TRUE)], 
+                        PerHectareTableDataSet[, median(TransPerHectare_2, na.rm = TRUE)],
+    PerHectareTableDataSet[, mad(TransPerHectare_1, na.rm = TRUE)], 
+                        PerHectareTableDataSet[, mad(TransPerHectare_2, na.rm = TRUE)],
+                        PerHectareTableDataSet[!is.na(TransPerHectare_1) & !is.na(TransPerHectare_2), .N],
+                        PerHectareTableDataSet[!is.na(TransPerHectare_1) & !is.na(TransPerHectare_2) & TransPerHectare_2 < TransPerHectare_1, .N],
+    PerHectareTableDataSet[, mean(PerChangeTransPerHectare, na.rm = TRUE)]
+    
+    ),
+  c("Labour Costs Per Hectare", PerHectareTableDataSet[, median(LabPerHectare_1, na.rm = TRUE)], 
+                        PerHectareTableDataSet[, median(LabPerHectare_2, na.rm = TRUE)],
+    PerHectareTableDataSet[, mad(LabPerHectare_1, na.rm = TRUE)], 
+                        PerHectareTableDataSet[, mad(LabPerHectare_2, na.rm = TRUE)],
+                        PerHectareTableDataSet[!is.na(LabPerHectare_1) & !is.na(LabPerHectare_2), .N],
+                        PerHectareTableDataSet[!is.na(LabPerHectare_1) & !is.na(LabPerHectare_2) & LabPerHectare_2 < LabPerHectare_1, .N],
+    PerHectareTableDataSet[, mean(PerChangeLabPerHectare, na.rm = TRUE)]
+    ),
+  c("Medicine Costs Per Hectare", PerHectareTableDataSet[, median(MedicPerHectare_1, na.rm = TRUE)], 
+                        PerHectareTableDataSet[, median(MedicPerHectare_2, na.rm = TRUE)],
+    PerHectareTableDataSet[, mad(MedicPerHectare_1, na.rm = TRUE)], 
+                        PerHectareTableDataSet[, mad(MedicPerHectare_2, na.rm = TRUE)],
+                        PerHectareTableDataSet[!is.na(MedicPerHectare_1) & !is.na(MedicPerHectare_2), .N],
+                        PerHectareTableDataSet[!is.na(MedicPerHectare_1) & !is.na(MedicPerHectare_2) & MedicPerHectare_2 < MedicPerHectare_1, .N],
+    PerHectareTableDataSet[, mean(PerChangeMedicPerHectare, na.rm = TRUE)]
+    )
+))
+
+colnames(PaperTableDF2) <- c("Parameter", "PreCOVID", "PostCOVID", "PreCOVID_MAD", "PostCOVID_MAD", "NoFarms", "NoFarmsDecr", "PercentChange")
+
+library(kableExtra)
+OutputTable2 <- kable(PaperTableDF2) %>%
+  kable_paper(bootstrap_options = "striped", full_width = F)
+
+```
+
+
+`r OutputTable2`
