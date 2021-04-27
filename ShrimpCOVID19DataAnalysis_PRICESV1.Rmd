@@ -1,0 +1,153 @@
+---
+title: "ShrimpCOVID19DataAnalysis"
+author: "Richard Heal"
+date: "12/18/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+#######################################################################
+# Load in the shrimp price data
+#######################################################################
+DataFile <- "COVIDAquaculture_ShrimpData_PRICES.csv"
+RawData_PRICES <- read.csv(DataFile, header = TRUE, skip = 0, stringsAsFactors = TRUE)
+
+#######################################################################
+# Make a numeric indicator
+#######################################################################
+library(data.table)
+RawData_PRICES <- setDT(RawData_PRICES)
+RawData_PRICES[, FarmNumber := .I]
+
+#########################################
+# Default plot parameters
+########################################
+PreMarker = 'square-open'
+PostMarker = 'circle'
+PreMarkerColor = 'rgb(0,0,0)'
+PostMarkerColor = 'rgb(0,0,0)'
+SegmentLineColor = 'rgb(50,50,50)'
+AxisTitleFONT = list(family = "Arial", size = 12, color = 'black')
+LegendFONT = list(family = "Arial", size = 12, color = 'black')
+SIGFONT = list(family = "Arial", size = 12, color = 'black')
+DASH = "5px"
+DOT = "2px"
+
+source('~/GitHubRepositoryProjects/BangladeshCOVID19Aqua/GetSignificanceSymbol.R')
+```
+
+## Analysis of Shrimp Aquaculture in Bangladesh Pre and Post COVID 19
+
+This document details the analysis of farm survey data taken on shrimp farms pre and post COVID 19.
+
+### Information about the species in the survey
+
+In this survey the main species of shrimp is recorded along with other co-cultured species. The following table documents the number of responses for each.
+
+```{r Summary stats on species in farms, include=TRUE}
+######################################################################
+# Create a basic table of data
+######################################################################
+library(kableExtra)
+
+FarmDetailsDF <- data.frame(cbind(
+  Species = RawData_PRICES[, data.table(table(CulturedSpecies))]$CulturedSpecies,
+  NumberFarms = RawData_PRICES[, data.table(table(CulturedSpecies))]$N,
+  MainSpecies = RawData_PRICES[MainSpecies == "Y", data.table(table(CulturedSpecies))]$N,
+  OtherSpecies = RawData_PRICES[MainSpecies == "N", data.table(table(CulturedSpecies))]$N
+)) 
+
+FarmDetailsTable <- kbl(FarmDetailsDF) %>%
+                    kable_material(c("striped"))
+
+```
+
+The basic information on the number of farms and which species they hold is shown in the table below:
+
+`r FarmDetailsTable`
+
+
+```{r Summary stats on gate prices, include=TRUE}
+##############################################
+# Include some basic stats about gate prices
+##############################################
+MeanGate_PenM_1 <- RawData_PRICES[CulturedSpecies == "Peneaus monodon", mean(ShrimpPrice_1)]
+MeanGate_PenM_2 <- RawData_PRICES[CulturedSpecies == "Peneaus monodon", mean(ShrimpPrice_2)]
+
+MeanGate_PenO_1 <- RawData_PRICES[CulturedSpecies == "Penaeus orientalis", mean(ShrimpPrice_1)]
+MeanGate_PenO_2 <- RawData_PRICES[CulturedSpecies == "Penaeus orientalis", mean(ShrimpPrice_2)]
+
+MeanGate_MacR_1 <- RawData_PRICES[CulturedSpecies == "Macrobrachium rosenbergii ", mean(ShrimpPrice_1)]
+MeanGate_MacR_2 <- RawData_PRICES[CulturedSpecies == "Macrobrachium rosenbergii ", mean(ShrimpPrice_2)]
+
+MeanGate_MetaB_1 <- RawData_PRICES[CulturedSpecies == "Metapenaeus brevicornis", mean(ShrimpPrice_1)]
+MeanGate_MetaB_2 <- RawData_PRICES[CulturedSpecies == "Metapenaeus brevicornis", mean(ShrimpPrice_2)]
+
+MeanGate_MetaM_1 <- RawData_PRICES[CulturedSpecies == "Metapenaeus monoceros", mean(ShrimpPrice_1)]
+MeanGate_MetaM_2 <- RawData_PRICES[CulturedSpecies == "Metapenaeus monoceros", mean(ShrimpPrice_2)]
+
+StdGate_PenM_1 <- RawData_PRICES[CulturedSpecies == "Peneaus monodon", sd(ShrimpPrice_1)]
+StdGate_PenM_2 <- RawData_PRICES[CulturedSpecies == "Peneaus monodon", sd(ShrimpPrice_2)]
+
+StdGate_PenO_1 <- RawData_PRICES[CulturedSpecies == "Penaeus orientalis", sd(ShrimpPrice_1)]
+StdGate_PenO_2 <- RawData_PRICES[CulturedSpecies == "Penaeus orientalis", sd(ShrimpPrice_2)]
+
+StdGate_MacR_1 <- RawData_PRICES[CulturedSpecies == "Macrobrachium rosenbergii ", sd(ShrimpPrice_1)]
+StdGate_MacR_2 <- RawData_PRICES[CulturedSpecies == "Macrobrachium rosenbergii ", sd(ShrimpPrice_2)]
+
+StdGate_MetaB_1 <- RawData_PRICES[CulturedSpecies == "Metapenaeus brevicornis", sd(ShrimpPrice_1)]
+StdGate_MetaB_2 <- RawData_PRICES[CulturedSpecies == "Metapenaeus brevicornis", sd(ShrimpPrice_2)]
+
+StdGate_MetaM_1 <- RawData_PRICES[CulturedSpecies == "Metapenaeus monoceros", sd(ShrimpPrice_1)]
+StdGate_MetaM_2 <- RawData_PRICES[CulturedSpecies == "Metapenaeus monoceros", sd(ShrimpPrice_2)]
+
+ConfGate_PenM_1 <- 1.96 * (StdGate_PenM_1)/(sqrt(sum(RawData_PRICES[CulturedSpecies == "Peneaus monodon", .N])))
+ConfGate_PenM_2 <- 1.96 * (StdGate_PenM_2)/(sqrt(sum(RawData_PRICES[CulturedSpecies == "Peneaus monodon", .N])))
+
+ConfGate_PenO_1 <- 1.96 * (StdGate_PenO_1)/(sqrt(sum(RawData_PRICES[CulturedSpecies == "Penaeus orientalis", .N])))
+ConfGate_PenO_2 <- 1.96 * (StdGate_PenO_2)/(sqrt(sum(RawData_PRICES[CulturedSpecies == "Penaeus orientalis", .N])))
+
+ConfGate_MacR_1 <- 1.96 * (StdGate_MacR_1)/(sqrt(sum(RawData_PRICES[CulturedSpecies == "Macrobrachium rosenbergii", .N])))
+ConfGate_MacR_2 <- 1.96 * (StdGate_MacR_2)/(sqrt(sum(RawData_PRICES[CulturedSpecies == "Macrobrachium rosenbergii", .N])))
+
+ConfGate_MetaB_1 <- 1.96 * (StdGate_MetaB_1)/(sqrt(sum(RawData_PRICES[CulturedSpecies == "Metapenaeus brevicornis", .N])))
+ConfGate_MetaB_2 <- 1.96 * (StdGate_MetaB_2)/(sqrt(sum(RawData_PRICES[CulturedSpecies == "Metapenaeus brevicornis", .N])))
+
+ConfGate_MetaM_1 <- 1.96 * (StdGate_MetaM_1)/(sqrt(sum(RawData_PRICES[CulturedSpecies == "Metapenaeus monoceros", .N])))
+ConfGate_MetaM_2 <- 1.96 * (StdGate_MetaM_2)/(sqrt(sum(RawData_PRICES[CulturedSpecies == "Metapenaeus monoceros", .N])))
+
+```
+
+## Effect of Covid19 on Product Prices 
+
+### Mean gate prices
+
+For the shrimp farms the main shrimp stocked is either P. monodon or M. rosengerbii.
+
+Prior to covid19 the mean gate prices for fish were:  
+  
+ P. monodon: **`r MeanGate_PenM_1`** +/- **`r StdGate_PenM_1`**  
+ M. rosengerbii: **`r MeanGate_PenM_1`** +/- **`r StdGate_MacR_1`**  
+ P. orientalis: **`r MeanGate_PenO_1`** +/- **`r StdGate_PenO_1`**  
+ M. brevicornis: **`r MeanGate_MetaB_1`** +/- **`r StdGate_MetaB_1`**
+ M. monoceros: **`r MeanGate_MetaM_1`** +/- **`r StdGate_MetaM_1`**  
+ 
+After covid19 the mean gate prices for fish were:  
+  
+ P. monodon: **`r MeanGate_PenM_2`** +/- **`r StdGate_PenM_2`**  
+ M. rosengerbii: **`r MeanGate_PenM_2`** +/- **`r StdGate_MacR_2`**  
+ P. orientalis: **`r MeanGate_PenO_2`** +/- **`r StdGate_PenO_2`**  
+ M. brevicornis: **`r MeanGate_MetaB_2`** +/- **`r StdGate_MetaB_2`**
+ M. monoceros: **`r MeanGate_MetaM_2`** +/- **`r StdGate_MetaM_2`**  
+ 
+The percentage increase in prices were:  
+  P. monodon: **`r (MeanGate_PenM_2 - MeanGate_PenM_1) / MeanGate_PenM_2 * 100`**  
+  M. rosengerbii: **`r (MeanGate_MacR_2 - MeanGate_MacR_1) / MeanGate_MacR_2 * 100`**  
+  P. orientalis: **`r (MeanGate_PenO_2 - MeanGate_PenO_1) / MeanGate_PenO_2 * 100`**  
+  M. brevicornis: **`r (MeanGate_MetaB_2 - MeanGate_MetaB_1) / MeanGate_MetaB_2 * 100`**  
+  M. monoceros: **`r (MeanGate_MetaM_2 - MeanGate_MetaM_1) / MeanGate_MetaM_2 * 100`**  
+  
+  
+  
