@@ -1,0 +1,231 @@
+Consumer,ConsumedShrimpSpecies,Shrimp_PreCovidPaidPrice/kg,Shrimp_PostCovidPaidPrice/kg
+1,Peneaus monodon,950,650
+1,Macrobrachium rosenbergii ,900,800
+1,Metapenaeus monoceros,450,450
+1,Metapenaeus brevicornis,450,450
+1,Penaeus orientalis,600,500
+2,Peneaus monodon,750,600
+2,Macrobrachium rosenbergii ,850,700
+2,Metapenaeus monoceros,500,500
+2,Metapenaeus brevicornis,450,400
+3,Peneaus monodon,1000,750
+3,Macrobrachium rosenbergii ,850,750
+3,Metapenaeus brevicornis,500,450
+3,Penaeus orientalis,600,450
+4,Peneaus monodon,700,550
+4,Macrobrachium rosenbergii ,850,700
+4,Metapenaeus monoceros,350,350
+4,Penaeus orientalis,650,500
+5,Peneaus monodon,700,600
+5,Macrobrachium rosenbergii ,850,800
+5,Metapenaeus monoceros,450,450
+5,Metapenaeus brevicornis,450,400
+6,Peneaus monodon,1000,750
+6,Macrobrachium rosenbergii ,950,700
+6,Metapenaeus monoceros,500,550
+6,Penaeus orientalis,570,500
+7,Peneaus monodon,800,700
+7,Macrobrachium rosenbergii ,850,700
+7,Metapenaeus brevicornis,500,500
+7,Penaeus orientalis,600,450
+8,Peneaus monodon,1050,600
+8,Macrobrachium rosenbergii ,950,800
+8,Metapenaeus brevicornis,550,500
+8,Penaeus orientalis,650,500
+9,Peneaus monodon,1000,650
+9,Macrobrachium rosenbergii ,900,700
+9,Metapenaeus monoceros,600,550
+9,Penaeus orientalis,580,450
+10,Peneaus monodon,1000,700
+10,Macrobrachium rosenbergii ,900,700
+10,Metapenaeus monoceros,600,550
+10,Metapenaeus brevicornis,600,600
+11,Peneaus monodon,950,700
+11,Macrobrachium rosenbergii ,850,700
+11,Metapenaeus monoceros,550,500
+11,Penaeus orientalis,600,450
+12,Peneaus monodon,750,600
+12,Macrobrachium rosenbergii ,850,800
+12,Metapenaeus monoceros,350,350
+12,Penaeus orientalis,650,500
+13,Peneaus monodon,1050,750
+13,Macrobrachium rosenbergii ,900,800
+13,Metapenaeus brevicornis,600,550
+13,Penaeus orientalis,570,500
+14,Peneaus monodon,1000,750
+14,Macrobrachium rosenbergii ,950,700
+14,Metapenaeus monoceros,550,500
+14,Metapenaeus brevicornis,550,600
+15,Peneaus monodon,800,650
+15,Macrobrachium rosenbergii ,900,800
+15,Metapenaeus brevicornis,500,450
+16,Peneaus monodon,900,650
+16,Macrobrachium rosenbergii ,900,700
+16,Metapenaeus monoceros,500,550
+16,Metapenaeus brevicornis,500,500
+17,Peneaus monodon,900,700
+17,Macrobrachium rosenbergii ,900,700
+17,Metapenaeus brevicornis,400,350
+17,Penaeus orientalis,600,450
+18,Peneaus monodon,850,600
+18,Macrobrachium rosenbergii ,950,800
+18,Metapenaeus monoceros,450,450
+19,Peneaus monodon,1050,750
+19,Macrobrachium rosenbergii ,950,800
+19,Metapenaeus monoceros,600,500
+19,Metapenaeus brevicornis,500,450
+20,Peneaus monodon,750,550
+20,Macrobrachium rosenbergii ,850,700
+20,Metapenaeus brevicornis,400,400
+20,Penaeus orientalis,650,500
+21,Peneaus monodon,1000,750
+21,Macrobrachium rosenbergii ,950,800
+21,Metapenaeus monoceros,550,500
+21,Penaeus orientalis,560,500
+22,Peneaus monodon,800,650
+22,Macrobrachium rosenbergii ,950,750
+22,Metapenaeus monoceros,550,450
+22,Metapenaeus brevicornis,500,500
+23,Peneaus monodon,800,650
+23,Macrobrachium rosenbergii ,1000,800
+23,Metapenaeus brevicornis,450,400
+23,Penaeus orientalis,600,500
+24,Peneaus monodon,850,650
+24,Macrobrachium rosenbergii ,1050,800
+24,Metapenaeus monoceros,500,400
+24,Metapenaeus brevicornis,550,500
+25,Peneaus monodon,800,700
+25,Macrobrachium rosenbergii ,900,650
+25,Metapenaeus brevicornis,550,550
+25,Penaeus orientalis,600,450
+26,Peneaus monodon,900,600
+26,Macrobrachium rosenbergii ,900,650
+26,Metapenaeus monoceros,600,600
+26,Penaeus orientalis,650,500
+27,Peneaus monodon,800,600
+27,Macrobrachium rosenbergii ,900,700
+27,Metapenaeus brevicornis,450,400
+28,Peneaus monodon,800,650
+28,Macrobrachium rosenbergii ,950,650
+28,Metapenaeus monoceros,400,450
+28,Penaeus orientalis,600,450
+29,Peneaus monodon,1050,750
+29,Macrobrachium rosenbergii ,1050,900
+29,Metapenaeus monoceros,400,500
+29,Metapenaeus brevicornis,500,500
+30,Peneaus monodon,850,550
+30,Macrobrachium rosenbergii ,900,700
+30,Metapenaeus monoceros,450,400
+30,Metapenaeus brevicornis,500,550
+30,Penaeus orientalis,560,450
+31,Peneaus monodon,1050,750
+31,Macrobrachium rosenbergii ,1050,900
+31,Metapenaeus monoceros,500,450
+32,Peneaus monodon,1000,700
+32,Macrobrachium rosenbergii ,1000,900
+32,Metapenaeus brevicornis,550,550
+32,Penaeus orientalis,650,450
+33,Peneaus monodon,1050,700
+33,Macrobrachium rosenbergii ,1050,850
+33,Metapenaeus monoceros,600,600
+33,Metapenaeus brevicornis,450,500
+34,Peneaus monodon,950,650
+34,Macrobrachium rosenbergii ,950,700
+34,Metapenaeus monoceros,550,500
+34,Penaeus orientalis,650,500
+35,Peneaus monodon,950,600
+35,Macrobrachium rosenbergii ,1000,850
+35,Metapenaeus brevicornis,500,500
+36,Peneaus monodon,900,600
+36,Macrobrachium rosenbergii ,1050,850
+36,Metapenaeus monoceros,400,400
+37,Peneaus monodon,1000,750
+37,Macrobrachium rosenbergii ,900,700
+37,Metapenaeus monoceros,500,450
+37,Metapenaeus brevicornis,550,500
+38,Peneaus monodon,800,550
+38,Macrobrachium rosenbergii ,950,650
+39,Peneaus monodon,850,600
+39,Macrobrachium rosenbergii ,900,650
+39,Metapenaeus brevicornis,450,400
+39,Penaeus orientalis,600,500
+40,Peneaus monodon,800,650
+40,Macrobrachium rosenbergii ,900,700
+40,Metapenaeus monoceros,450,400
+41,Peneaus monodon,900,650
+41,Macrobrachium rosenbergii ,850,700
+41,Metapenaeus monoceros,500,450
+42,Peneaus monodon,850,650
+42,Macrobrachium rosenbergii ,1000,750
+42,Metapenaeus monoceros,500,500
+42,Penaeus orientalis,600,500
+43,Peneaus monodon,1000,700
+43,Macrobrachium rosenbergii ,1000,850
+43,Metapenaeus monoceros,500,450
+43,Metapenaeus brevicornis,550,550
+44,Peneaus monodon,900,600
+44,Macrobrachium rosenbergii ,1050,900
+44,Metapenaeus monoceros,600,550
+44,Metapenaeus brevicornis,600,550
+44,Penaeus orientalis,650,500
+45,Peneaus monodon,800,550
+45,Macrobrachium rosenbergii ,900,650
+45,Metapenaeus monoceros,500,550
+46,Peneaus monodon,800,600
+46,Macrobrachium rosenbergii ,900,650
+46,Metapenaeus monoceros,450,420
+46,Penaeus orientalis,650,450
+47,Peneaus monodon,900,650
+47,Macrobrachium rosenbergii ,950,700
+47,Metapenaeus monoceros,550,550
+48,Peneaus monodon,1050,750
+48,Macrobrachium rosenbergii ,950,750
+48,Metapenaeus monoceros,500,500
+48,Metapenaeus brevicornis,500,500
+49,Peneaus monodon,750,530
+49,Macrobrachium rosenbergii ,900,700
+49,Metapenaeus monoceros,450,430
+49,Penaeus orientalis,600,450
+50,Peneaus monodon,1050,750
+50,Macrobrachium rosenbergii ,1050,900
+50,Metapenaeus monoceros,600,550
+51,Peneaus monodon,1000,750
+51,Macrobrachium rosenbergii ,1000,850
+51,Penaeus orientalis,650,500
+52,Peneaus monodon,950,700
+52,Macrobrachium rosenbergii ,850,700
+52,Metapenaeus monoceros,500,550
+52,Metapenaeus brevicornis,600,550
+53,Peneaus monodon,950,650
+53,Macrobrachium rosenbergii ,850,650
+53,Metapenaeus monoceros,550,550
+54,Peneaus monodon,900,650
+54,Macrobrachium rosenbergii ,1000,900
+54,Metapenaeus monoceros,550,500
+54,Penaeus orientalis,600,500
+55,Peneaus monodon,800,600
+55,Macrobrachium rosenbergii ,850,650
+55,Metapenaeus monoceros,550,500
+55,Metapenaeus brevicornis,500,550
+56,Peneaus monodon,850,600
+56,Macrobrachium rosenbergii ,900,700
+56,Metapenaeus monoceros,600,500
+57,Peneaus monodon,850,650
+57,Macrobrachium rosenbergii ,950,700
+57,Penaeus orientalis,600,450
+58,Peneaus monodon,800,550
+58,Macrobrachium rosenbergii ,900,650
+58,Metapenaeus monoceros,450,420
+59,Peneaus monodon,900,550
+59,Macrobrachium rosenbergii ,1050,900
+59,Metapenaeus monoceros,600,550
+60,Peneaus monodon,1000,750
+60,Macrobrachium rosenbergii ,850,700
+60,Metapenaeus monoceros,550,450
+60,Penaeus orientalis,650,500
+61,Peneaus monodon,1050,750
+61,Macrobrachium rosenbergii ,1000,800
+61,Metapenaeus monoceros,500,450
+62,Peneaus monodon,750,600
+62,Macrobrachium rosenbergii ,900,650
+62,Metapenaeus monoceros,500,450
