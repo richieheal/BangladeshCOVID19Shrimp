@@ -1,0 +1,1272 @@
+---
+title: "ShrimpCovAquaConsumerPrices"
+author: "Richard Heal"
+date: "5/10/2021"
+output: 
+  html_document:
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+# Libraries to use
+library(data.table)
+library(kableExtra)
+library(plotly)
+
+#######################################################################
+# Load in the consumer price data
+#######################################################################
+DataFile <- "ShrimpCovAqua_ConsumerPrices.csv"
+RawData_CONSUMER_PRICES <- read.csv(DataFile, header = TRUE, skip = 0, stringsAsFactors = TRUE)
+FinDataFile <- "ShrimpCovAqua_ConsumerPricesFINFISH.csv"
+RawData_CONSUMER_FINFISH <- read.csv(FinDataFile, header = TRUE, skip = 0, stringsAsFactors = TRUE)
+
+DataFile <- "COVIDAquaculture_ShrimpData_PRICES.csv"
+RawData_FARMER_PRICES <- read.csv(DataFile, header = TRUE, skip = 0, stringsAsFactors = TRUE)
+FinDataFile <- "COVIDAquaculture_ShrimpData_FINFISH_PRICES_MARGIN.csv"
+RawData_FARMER_FINFISH <- read.csv(FinDataFile, header = TRUE, skip = 0, stringsAsFactors = TRUE)
+
+RawData_CONSUMER_PRICES <- setDT(RawData_CONSUMER_PRICES)
+RawData_CONSUMER_FINFISH <- setDT(RawData_CONSUMER_FINFISH)
+RawData_FARMER_PRICES <- setDT(RawData_FARMER_PRICES)
+RawData_FARMER_FINFISH <- setDT(RawData_FARMER_FINFISH)
+
+# Calculate the price differences
+RawData_CONSUMER_PRICES[, PriceDiff := (Shrimp_PostCovidPaidPrice.kg - Shrimp_PreCovidPaidPrice.kg)]
+RawData_CONSUMER_FINFISH[, PriceDiff := (PostCovidPaidPrice.kg - PreCovidPaidPrice.kg)]
+# Calculate the percentage changes
+RawData_CONSUMER_PRICES[, PercentChange := ((PriceDiff/Shrimp_PreCovidPaidPrice.kg) * 100)]
+RawData_CONSUMER_FINFISH[, PercentChange := ((PriceDiff/PreCovidPaidPrice.kg) * 100)]
+
+# We do not have a direct link in the supply chain between farmer and consumer. Therefore, we need to consider the mean farm gate price
+# pre-covid, mean consumer price pre-covid, and the same for post-covid with the markups
+MeanConsumerPrices_Shrimp <- RawData_CONSUMER_PRICES[, .(CPrice_1 = mean(Shrimp_PreCovidPaidPrice.kg, na.rm = TRUE), CPrice_2 = mean(Shrimp_PostCovidPaidPrice.kg, na.rm = TRUE)), ConsumedShrimpSpecies]
+MeanGatePrices_Shrimp <- RawData_FARMER_PRICES[, .(GPrice_1 = mean(ShrimpPrice_1, na.rm = TRUE), GPrice_2 = mean(ShrimpPrice_2, na.rm = TRUE)), CulturedSpecies]
+MeanMarkUpPrices_Shrimp <- merge(MeanConsumerPrices_Shrimp, MeanGatePrices_Shrimp, by.x = "ConsumedShrimpSpecies", by.y ="CulturedSpecies")
+MeanMarkUpPrices_Shrimp[, MarkUp_1 := (CPrice_1 - GPrice_1)]
+MeanMarkUpPrices_Shrimp[, MarkUp_2 := (CPrice_2 - GPrice_2)]
+MeanMarkUpPrices_Shrimp[, MarkUpDifference := (MarkUp_2 - MarkUp_1)]
+MeanMarkUpPrices_Shrimp[, MarkUpPercentage_1 := ((MarkUp_1/GPrice_1) * 100)] # Mark up as a percentage of the price the farmer receives
+MeanMarkUpPrices_Shrimp[, MarkUpPercentage_2 := ((MarkUp_2/GPrice_2) * 100)]
+MeanMarkUpPrices_Shrimp[, MarkUpPercentageDifference := (MarkUpPercentage_2 - MarkUpPercentage_1)]
+
+# Repeat for finfish
+MeanConsumerPrices_Finfish <- RawData_CONSUMER_FINFISH[, .(CPrice_1 = mean(PreCovidPaidPrice.kg, na.rm = TRUE), CPrice_2 = mean(PostCovidPaidPrice.kg, na.rm = TRUE)), ConsumedSaltwaterFinfish]
+MeanGatePrices_Finfish_SW <- RawData_FARMER_FINFISH[!is.na(SWFin_Coculture), .(GPrice_1 = mean(SWFin_1, na.rm = TRUE), GPrice_2 = mean(SWFin_2, na.rm = TRUE)), SWFin_Coculture]
+MeanGatePrices_Finfish_FW <- RawData_FARMER_FINFISH[!is.na(FWFin_Coculture), .(GPrice_1 = mean(FWFin_1, na.rm = TRUE), GPrice_2 = mean(FWFin_2, na.rm = TRUE)), FWFin_Coculture]
+MeanGatePrices_Finfish <- rbind(MeanGatePrices_Finfish_SW, MeanGatePrices_Finfish_FW, use.names = FALSE)
+setnames(MeanGatePrices_Finfish, "SWFin_Coculture", "FinfishSpecies")
+
+MeanMarkUpPrices_Finfish <- merge(MeanConsumerPrices_Finfish, MeanGatePrices_Finfish, by.x = "ConsumedSaltwaterFinfish", by.y ="FinfishSpecies")
+
+MeanMarkUpPrices_Finfish[, MarkUp_1 := (CPrice_1 - GPrice_1)]
+MeanMarkUpPrices_Finfish[, MarkUp_2 := (CPrice_2 - GPrice_2)]
+MeanMarkUpPrices_Finfish[, MarkUpDifference := (MarkUp_2 - MarkUp_1)]
+MeanMarkUpPrices_Finfish[, MarkUpPercentage_1 := ((MarkUp_1/GPrice_1) * 100)] # Mark up as a percentage of the price the farmer receives
+MeanMarkUpPrices_Finfish[, MarkUpPercentage_2 := ((MarkUp_2/GPrice_2) * 100)]
+MeanMarkUpPrices_Finfish[, MarkUpPercentageDifference := (MarkUpPercentage_2 - MarkUpPercentage_1)]
+
+SaltWaterSpecies <- c("Labeo boga",
+                      "Lates calcarifer",
+                      "Mugil cephalus",
+                      "Mystus vittatus",
+                      "Pomadasys hasta",
+                      "Scatophagus argus")
+#########################################
+# Figure parameters
+#########################################
+PreCovidFillColour <- 'rgb(180,180,180)'
+PostCovidFillColour <- 'rgb(80,80,80)'
+LineColour <- 'rgb(20,20,20)'
+MarkerPointColour <- 'rgb(0,0,0)'
+NotchedYN = FALSE
+ShowMean = TRUE
+
+```
+
+## Analysis of the prices paid for by the consumer
+
+A consumer survey was performed in **3** markets and **61** consumers and they were asked to provide the prices that they paid for shrimp and finfish pre- and post-COVID. This should give us an idea of any mark-up on price and fluctuation in prices due to COVID. 
+
+The price difference (BDT per kg) and the percentage change in price versus the pre-COVID price were calculated.
+
+```{r Summary of Shrimp Prices paid by the consumer, class.source = 'fold.hide'}
+########################################################################################
+# Basic summary statistics of the prices paid
+########################################################################################
+ConsumerNumbers_Shrimp_DF <- RawData_CONSUMER_PRICES[, .N, ConsumedShrimpSpecies]
+colnames(ConsumerNumbers_Shrimp_DF) <- c("Species", 
+                                           "Number of Consumers")
+ConsumerNumbers_Shrimp_Table <- kbl(ConsumerNumbers_Shrimp_DF) %>%
+  kable_paper("striped", full_width = FALSE)
+
+
+
+ConsumerPriceDiff_Shrimp_DF <- RawData_CONSUMER_PRICES[, .(mean(Shrimp_PreCovidPaidPrice.kg, na.rm = TRUE),
+                                                           sd(Shrimp_PreCovidPaidPrice.kg, na.rm = TRUE),
+                                                           mean(Shrimp_PostCovidPaidPrice.kg, na.rm = TRUE),
+                                                           sd(Shrimp_PostCovidPaidPrice.kg, na.rm = TRUE),
+                                                           mean(PriceDiff, na.rm = TRUE),
+                                                           sd(PriceDiff, na.rm = TRUE))
+                                                       , ConsumedShrimpSpecies]
+colnames(ConsumerPriceDiff_Shrimp_DF) <- c("Species", 
+                                           "Price Pre-COVID", "Std Dev", 
+                                           "Price Post-COVID", "Std Dev",
+                                           "Price Difference (BDT per kg)", "Std Dev")
+ConsumerPriceDiff_Shrimp_Table <- kbl(ConsumerPriceDiff_Shrimp_DF) %>%
+  kable_paper("striped", full_width = FALSE)
+
+ConsumerPriceDiff_Shrimp_MEAN_DF <- RawData_CONSUMER_PRICES[, .(mean(Shrimp_PreCovidPaidPrice.kg, na.rm = TRUE),
+                                                           sd(Shrimp_PreCovidPaidPrice.kg, na.rm = TRUE),
+                                                           mean(Shrimp_PostCovidPaidPrice.kg, na.rm = TRUE),
+                                                           sd(Shrimp_PostCovidPaidPrice.kg, na.rm = TRUE),
+                                                           mean(PriceDiff, na.rm = TRUE),
+                                                           sd(PriceDiff, na.rm = TRUE))]
+colnames(ConsumerPriceDiff_Shrimp_MEAN_DF) <- c("Price Pre-COVID", "Std Dev", 
+                                           "Price Post-COVID", "Std Dev",
+                                           "Price Difference (BDT per kg)", "Std Dev")
+ConsumerPriceDiff_Shrimp_MEAN_Table <- kbl(ConsumerPriceDiff_Shrimp_MEAN_DF) %>%
+  kable_paper("striped", full_width = FALSE)
+
+ConsumerPriceDiff_Shrimp_MEAN_DF2 <- RawData_CONSUMER_PRICES[ConsumedShrimpSpecies != "Penaeus orientalis", .(mean(Shrimp_PreCovidPaidPrice.kg, na.rm = TRUE),
+                                                           sd(Shrimp_PreCovidPaidPrice.kg, na.rm = TRUE),
+                                                           mean(Shrimp_PostCovidPaidPrice.kg, na.rm = TRUE),
+                                                           sd(Shrimp_PostCovidPaidPrice.kg, na.rm = TRUE),
+                                                           mean(PriceDiff, na.rm = TRUE),
+                                                           sd(PriceDiff, na.rm = TRUE))]
+colnames(ConsumerPriceDiff_Shrimp_MEAN_DF2) <- c("Price Pre-COVID", "Std Dev", 
+                                           "Price Post-COVID", "Std Dev",
+                                           "Price Difference (BDT per kg)", "Std Dev")
+ConsumerPriceDiff_Shrimp_MEAN_Table2 <- kbl(ConsumerPriceDiff_Shrimp_MEAN_DF2) %>%
+  kable_paper("striped", full_width = FALSE)
+
+######################################################################################################################
+ConsumerPercentDiff_Shrimp_DF <- RawData_CONSUMER_PRICES[, mean(PercentChange, na.rm = TRUE), ConsumedShrimpSpecies] 
+colnames(ConsumerPercentDiff_Shrimp_DF) <- c("Species", "Percentage Change")
+ConsumerPercentDiff_Shrimp_Table <- kbl(ConsumerPercentDiff_Shrimp_DF) %>%
+  kable_paper("striped", full_width = FALSE)
+
+ConsumerPercentDiff_Shrimp_MEAN_DF <- RawData_CONSUMER_PRICES[, .(mean(PercentChange, na.rm = TRUE),
+                                                                  sd(PercentChange, na.rm = TRUE))] 
+colnames(ConsumerPercentDiff_Shrimp_MEAN_DF) <- c("Percentage Change", "Std Dev")
+ConsumerPercentDiff_Shrimp_MEAN_Table <- kbl(ConsumerPercentDiff_Shrimp_MEAN_DF) %>%
+  kable_paper("striped", full_width = FALSE)
+
+ConsumerPercentDiff_Shrimp_MEAN_DF2 <- RawData_CONSUMER_PRICES[ConsumedShrimpSpecies != "Penaeus orientalis",
+                                                               .(mean(PercentChange, na.rm = TRUE),
+                                                                  sd(PercentChange, na.rm = TRUE))] 
+colnames(ConsumerPercentDiff_Shrimp_MEAN_DF2) <- c("Percentage Change", "Std Dev")
+ConsumerPercentDiff_Shrimp_MEAN_Table2 <- kbl(ConsumerPercentDiff_Shrimp_MEAN_DF2) %>%
+  kable_paper("striped", full_width = FALSE)
+######################################################################################################################
+
+MarkUp_Shrimp_DF <- MeanMarkUpPrices_Shrimp[, .(PreCovidMarkUp = MarkUp_1, PostCovidMarkUp = MarkUp_2, Difference = MarkUpDifference), ConsumedShrimpSpecies]
+MarkUp_Shrimp_Table <- kbl(MarkUp_Shrimp_DF) %>%
+  kable_paper("striped", full_width = FALSE)
+
+MarkUp_Shrimp_MEAN_DF <- MeanMarkUpPrices_Shrimp[, .(MEANPreCovidMarkUp = mean(MarkUp_1), MEANPostCovidMarkUp = mean(MarkUp_2), MEANDifference = mean(MarkUpDifference))]
+MarkUp_Shrimp_MEAN_Table <- kbl(MarkUp_Shrimp_MEAN_DF) %>%
+  kable_paper("striped", full_width = FALSE)
+
+MarkUp_Shrimp_MEAN_DF2 <- MeanMarkUpPrices_Shrimp[ConsumedShrimpSpecies != "Penaeus orientalis", .(MEANPreCovidMarkUp = mean(MarkUp_1), MEANPostCovidMarkUp = mean(MarkUp_2), MEANDifference = mean(MarkUpDifference))]
+MarkUp_Shrimp_MEAN_Table2 <- kbl(MarkUp_Shrimp_MEAN_DF2) %>%
+  kable_paper("striped", full_width = FALSE)
+
+MarkUpPercent_Shrimp_DF <- MeanMarkUpPrices_Shrimp[, .(PreCovidMarkUpPercentage = MarkUpPercentage_1, PostCovidMarkUpPercentage = MarkUpPercentage_2, Difference = MarkUpPercentageDifference), ConsumedShrimpSpecies]
+MarkUpPercent_Shrimp_Table <- kbl(MarkUpPercent_Shrimp_DF) %>%
+  kable_paper("striped", full_width = FALSE)
+
+MarkUpPercent_Shrimp_MEAN_DF <- MeanMarkUpPrices_Shrimp[, .(PreCovidMEANMarkUpPercentage = mean(MarkUpPercentage_1), PostCovidMEANMarkUpPercentage = mean(MarkUpPercentage_2), MEANDifference = mean(MarkUpPercentageDifference))]
+MarkUpPercent_Shrimp_MEAN_Table <- kbl(MarkUpPercent_Shrimp_MEAN_DF) %>%
+  kable_paper("striped", full_width = FALSE)
+
+MarkUpPercent_Shrimp_MEAN_DF2 <- MeanMarkUpPrices_Shrimp[ConsumedShrimpSpecies != "Penaeus orientalis",
+                                                   .(PreCovidMEANMarkUpPercentage = mean(MarkUpPercentage_1),
+                                                     PostCovidMEANMarkUpPercentage = mean(MarkUpPercentage_2),
+                                                     MEANDifference = mean(MarkUpPercentageDifference))]
+MarkUpPercent_Shrimp_MEAN_Table2 <- kbl(MarkUpPercent_Shrimp_MEAN_DF2) %>%
+  kable_paper("striped", full_width = FALSE)
+
+```
+
+### Shrimp Consumer Prices
+
+The number of consumer prices obtained from the survey were:  
+
+`r ConsumerNumbers_Shrimp_Table`  
+
+The difference in mean prices paid by the consumer (as reported by the consumer) before and after COVID-19 were:
+
+`r ConsumerPriceDiff_Shrimp_Table`  
+
+And as a mean value across the shrimp species (with P. orientalis)
+
+`r ConsumerPriceDiff_Shrimp_MEAN_Table`
+
+And without
+
+`r ConsumerPriceDiff_Shrimp_MEAN_Table2`  
+
+As, percentage changes in prices this is:
+
+`r ConsumerPercentDiff_Shrimp_Table`  
+
+And as a mean value across the shrimp species (with P. orientalis)
+
+`r ConsumerPercentDiff_Shrimp_MEAN_Table`
+
+And without
+
+`r ConsumerPercentDiff_Shrimp_MEAN_Table2` 
+
+
+### Shrimp Mark Up Prices
+
+The difference in the mean price paid for by the consumer and the mean price obtained by the farmer was used to calculate the mark up on the product.  This was performed for pre- and post-COVID19.  
+
+`r MarkUp_Shrimp_Table`  
+
+And as a mean value across the shrimp species (with P. orientalis)
+
+`r MarkUp_Shrimp_MEAN_Table`
+
+And without
+
+`r MarkUp_Shrimp_MEAN_Table2`
+
+The markup percentage was calculated (the increase in cost between consumer and farmer as a percentage of the gate price).
+
+`r MarkUpPercent_Shrimp_Table`  
+
+And as a mean value across the shrimp species (with P. orientalis)
+
+`r MarkUpPercent_Shrimp_MEAN_Table`
+
+And without
+
+`r MarkUpPercent_Shrimp_MEAN_Table2`  
+  
+```{r BoxPlots of the Price differences, class.source = 'fold.hide'}
+########################################################################################
+# Box plots of the prices and price difference paid for shrimp and finfish
+########################################################################################
+BoxPlotShrimpPrices <- plot_ly(data = RawData_CONSUMER_PRICES, type = 'box') %>%
+  add_trace(y = RawData_CONSUMER_PRICES[ConsumedShrimpSpecies == "Peneaus monodon", .(Shrimp_PreCovidPaidPrice.kg)]$Shrimp_PreCovidPaidPrice.kg,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Peneaus monodon',
+            offsetgroup = 'PreCOVID',
+            fillcolor = PreCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_PRICES[ConsumedShrimpSpecies == "Peneaus monodon", .(Shrimp_PostCovidPaidPrice.kg)]$Shrimp_PostCovidPaidPrice.kg,
+            name = 'Peneaus monodon',
+            offsetgroup = 'PostCOVID',
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            fillcolor = PostCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_PRICES[ConsumedShrimpSpecies == "Macrobrachium rosenbergii ", .(Shrimp_PreCovidPaidPrice.kg)]$Shrimp_PreCovidPaidPrice.kg,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Macrobrachium rosenbergii',
+            offsetgroup = 'PreCOVID',
+            fillcolor = PreCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_PRICES[ConsumedShrimpSpecies == "Macrobrachium rosenbergii ", .(Shrimp_PostCovidPaidPrice.kg)]$Shrimp_PostCovidPaidPrice.kg,
+            name = 'Macrobrachium rosenbergii',
+            offsetgroup = 'PostCOVID',
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            fillcolor = PostCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_PRICES[ConsumedShrimpSpecies == "Metapenaeus monoceros", .(Shrimp_PreCovidPaidPrice.kg)]$Shrimp_PreCovidPaidPrice.kg,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Metapenaeus monoceros',
+            offsetgroup = 'PreCOVID',
+            fillcolor = PreCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_PRICES[ConsumedShrimpSpecies == "Metapenaeus monoceros", .(Shrimp_PostCovidPaidPrice.kg)]$Shrimp_PostCovidPaidPrice.kg,
+            name = 'Metapenaeus monoceros',
+            offsetgroup = 'PostCOVID',
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            fillcolor = PostCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_PRICES[ConsumedShrimpSpecies == "Metapenaeus brevicornis", .(Shrimp_PreCovidPaidPrice.kg)]$Shrimp_PreCovidPaidPrice.kg,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Metapenaeus brevicornis',
+            offsetgroup = 'PreCOVID',
+            fillcolor = PreCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_PRICES[ConsumedShrimpSpecies == "Metapenaeus brevicornis", .(Shrimp_PostCovidPaidPrice.kg)]$Shrimp_PostCovidPaidPrice.kg,
+            name = 'Metapenaeus brevicornis',
+            offsetgroup = 'PostCOVID',
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            fillcolor = PostCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_PRICES[ConsumedShrimpSpecies == "Penaeus orientalis", .(Shrimp_PreCovidPaidPrice.kg)]$Shrimp_PreCovidPaidPrice.kg,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Penaeus orientalis',
+            offsetgroup = 'PreCOVID',
+            fillcolor = PreCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_PRICES[ConsumedShrimpSpecies == "Penaeus orientalis", .(Shrimp_PostCovidPaidPrice.kg)]$Shrimp_PostCovidPaidPrice.kg,
+            name = 'Penaeus orientalis',
+            offsetgroup = 'PostCOVID',
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            fillcolor = PostCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  layout(showlegend = FALSE, boxmode = 'group', boxgap = 0.05, boxgroupgap = 0.2,
+         yaxis = list(showline = TRUE),
+         xaxis = list(showline = TRUE))
+
+BoxPlotShrimpPriceDiffs <- plot_ly(data = RawData_CONSUMER_PRICES, type = 'box') %>%
+  add_trace(y = RawData_CONSUMER_PRICES[ConsumedShrimpSpecies == "Peneaus monodon", .(PriceDiff)]$PriceDiff,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Peneaus monodon',
+            fillcolor = PreCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_PRICES[ConsumedShrimpSpecies == "Macrobrachium rosenbergii ", .(PriceDiff)]$PriceDiff,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Macrobrachium rosenbergii',
+            fillcolor = PreCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_PRICES[ConsumedShrimpSpecies == "Metapenaeus monoceros", .(PriceDiff)]$PriceDiff,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Metapenaeus monoceros',
+            fillcolor = PreCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_PRICES[ConsumedShrimpSpecies == "Metapenaeus brevicornis", .(PriceDiff)]$PriceDiff,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Metapenaeus brevicornis',
+            fillcolor = PreCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_PRICES[ConsumedShrimpSpecies == "Penaeus orientalis", .(PriceDiff)]$PriceDiff,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Penaeus orientalis',
+            fillcolor = PreCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  layout(showlegend = FALSE,
+         yaxis = list(showline = TRUE),
+         xaxis = list(showline = TRUE))
+
+# Box plot of percentage changes
+BoxPlotShrimpPricePercentChange <- plot_ly(data = RawData_CONSUMER_PRICES, type = 'box') %>%
+  add_trace(y = RawData_CONSUMER_PRICES[ConsumedShrimpSpecies == "Peneaus monodon", .(PercentChange)]$PercentChange,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Peneaus monodon',
+            fillcolor = PreCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_PRICES[ConsumedShrimpSpecies == "Macrobrachium rosenbergii ", .(PercentChange)]$PercentChange,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Macrobrachium rosenbergii',
+            fillcolor = PreCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_PRICES[ConsumedShrimpSpecies == "Metapenaeus monoceros", .(PercentChange)]$PercentChange,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Metapenaeus monoceros',
+            fillcolor = PreCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_PRICES[ConsumedShrimpSpecies == "Metapenaeus brevicornis", .(PercentChange)]$PercentChange,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Metapenaeus brevicornis',
+            fillcolor = PreCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_PRICES[ConsumedShrimpSpecies == "Penaeus orientalis", .(PercentChange)]$PercentChange,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Penaeus orientalis',
+            fillcolor = PreCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  layout(showlegend = FALSE,
+         yaxis = list(showline = TRUE),
+         xaxis = list(showline = TRUE))
+```
+
+### Shrimp Consumer Prices Box Plots
+
+Here is a boxplot of the shrimp prices pre and post COVID 19.
+
+`r BoxPlotShrimpPrices`
+
+Here as the price differences:  
+
+`r BoxPlotShrimpPriceDiffs`  
+
+Here as the percentages:
+
+`r BoxPlotShrimpPricePercentChange`
+
+
+## Finfish Consumer Prices
+
+In this section we look at the consumer prices for finfish in the markets selling the shrimp.  
+
+
+```{r Summary of Finfish Prices paid by the consumer, class.source = 'fold.hide'}
+########################################################################################
+# Basic summary statistics of the prices paid
+########################################################################################
+ConsumerNumbers_Finfish_DF_SW <- RawData_CONSUMER_FINFISH[ConsumedSaltwaterFinfish %in% SaltWaterSpecies, 
+                                                            .N,
+                                                            ConsumedSaltwaterFinfish]
+colnames(ConsumerNumbers_Finfish_DF_SW) <- c("Species", 
+                                           "Number of Consumer Prices")
+ConsumerNumbers_Finfish_Table_SW <- kbl(ConsumerNumbers_Finfish_DF_SW) %>%
+  kable_paper("striped", full_width = FALSE)
+
+ConsumerPriceDiff_Finfish_DF_SW <- RawData_CONSUMER_FINFISH[ConsumedSaltwaterFinfish %in% SaltWaterSpecies, 
+                                                            .(mean(PreCovidPaidPrice.kg, na.rm = TRUE),
+                                                            sd(PreCovidPaidPrice.kg, na.rm = TRUE),
+                                                            mean(PostCovidPaidPrice.kg, na.rm = TRUE),
+                                                            sd(PostCovidPaidPrice.kg, na.rm = TRUE),
+                                                            mean(PriceDiff, na.rm = TRUE),
+                                                            sd(PriceDiff, na.rm = TRUE)),
+                                                            ConsumedSaltwaterFinfish]
+colnames(ConsumerPriceDiff_Finfish_DF_SW) <- c("Species", 
+                                           "Price Pre-COVID", "Std Dev", 
+                                           "Price Post-COVID", "Std Dev",
+                                           "Price Difference (BDT per kg)", "Std Dev")
+ConsumerPriceDiff_Finfish_Table_SW <- kbl(ConsumerPriceDiff_Finfish_DF_SW) %>%
+  kable_paper("striped", full_width = FALSE)
+
+#####################################################################
+# Work out the means
+######################################################################
+ConsumerPriceDiff_MEAN_Finfish_DF_SW <- RawData_CONSUMER_FINFISH[ConsumedSaltwaterFinfish %in% SaltWaterSpecies, 
+                                                            .(mean(PreCovidPaidPrice.kg, na.rm = TRUE),
+                                                            sd(PreCovidPaidPrice.kg, na.rm = TRUE),
+                                                            mean(PostCovidPaidPrice.kg, na.rm = TRUE),
+                                                            sd(PostCovidPaidPrice.kg, na.rm = TRUE),
+                                                            mean(PriceDiff, na.rm = TRUE),
+                                                            sd(PriceDiff, na.rm = TRUE))]
+colnames(ConsumerPriceDiff_MEAN_Finfish_DF_SW) <- c("Price Pre-COVID", "Std Dev", 
+                                           "Price Post-COVID", "Std Dev",
+                                           "Price Difference (BDT per kg)", "Std Dev")
+ConsumerPriceDiff_Finfish_MEAN_Table_SW <- kbl(ConsumerPriceDiff_MEAN_Finfish_DF_SW) %>%
+  kable_paper("striped", full_width = FALSE)
+###############################################################################
+
+ConsumerPercentDiff_Finfish_DF_SW <- RawData_CONSUMER_FINFISH[ConsumedSaltwaterFinfish %in% SaltWaterSpecies, 
+                                                              .(mean(PercentChange, na.rm = TRUE),
+                                                                sd(PercentChange, na.rm = TRUE)), 
+                                                              ConsumedSaltwaterFinfish] 
+colnames(ConsumerPercentDiff_Finfish_DF_SW) <- c("Species", "Percentage Change" ,"Std Dev")
+ConsumerPercentDiff_Finfish_Table_SW <- kbl(ConsumerPercentDiff_Finfish_DF_SW) %>%
+  kable_paper("striped", full_width = FALSE)
+
+#####################################################################
+# Work out the means
+######################################################################
+ConsumerPercentDiff_MEAN_Finfish_DF_SW <- RawData_CONSUMER_FINFISH[ConsumedSaltwaterFinfish %in% SaltWaterSpecies, 
+                                                              .(mean(PercentChange, na.rm = TRUE),
+                                                                sd(PercentChange, na.rm = TRUE))]
+colnames(ConsumerPercentDiff_MEAN_Finfish_DF_SW) <- c("Mean Percentage Change" ,"Std Dev")
+ConsumerPercentDiff_MEAN_Finfish_Table_SW <- kbl(ConsumerPercentDiff_MEAN_Finfish_DF_SW) %>%
+  kable_paper("striped", full_width = FALSE)
+###############################################################################
+
+#################################################################################
+# Freshwater
+#################################################################################
+ConsumerNumbers_Finfish_DF_FW <- RawData_CONSUMER_FINFISH[!ConsumedSaltwaterFinfish %in% SaltWaterSpecies, 
+                                                            .N,
+                                                            ConsumedSaltwaterFinfish]
+colnames(ConsumerNumbers_Finfish_DF_FW) <- c("Species", 
+                                           "Number of Consumer Prices")
+ConsumerNumbers_Finfish_Table_FW <- kbl(ConsumerNumbers_Finfish_DF_FW) %>%
+  kable_paper("striped", full_width = FALSE)
+
+ConsumerPriceDiff_Finfish_DF_FW <- RawData_CONSUMER_FINFISH[!ConsumedSaltwaterFinfish %in% SaltWaterSpecies, 
+                                                            .(mean(PreCovidPaidPrice.kg, na.rm = TRUE),
+                                                            sd(PreCovidPaidPrice.kg, na.rm = TRUE),
+                                                            mean(PostCovidPaidPrice.kg, na.rm = TRUE),
+                                                            sd(PostCovidPaidPrice.kg, na.rm = TRUE),
+                                                            mean(PriceDiff, na.rm = TRUE),
+                                                            sd(PriceDiff, na.rm = TRUE)), 
+                                                            ConsumedSaltwaterFinfish]
+ConsumerPriceDiff_Finfish_Carp <- RawData_CONSUMER_FINFISH[ConsumedSaltwaterFinfish == "Cyprinus carpio" |
+                                                            ConsumedSaltwaterFinfish == "Cyprinus carpio var. specularis"    , 
+                                                            .(mean(PreCovidPaidPrice.kg, na.rm = TRUE),
+                                                            sd(PreCovidPaidPrice.kg, na.rm = TRUE),
+                                                            mean(PostCovidPaidPrice.kg, na.rm = TRUE),
+                                                            sd(PostCovidPaidPrice.kg, na.rm = TRUE),
+                                                            mean(PriceDiff, na.rm = TRUE),
+                                                            sd(PriceDiff, na.rm = TRUE))]
+ConsumerPriceDiff_Finfish_DF_FW <- rbind(
+  ConsumerPriceDiff_Finfish_DF_FW,
+  c("Common carp", ConsumerPriceDiff_Finfish_Carp),
+  use.names = FALSE
+)
+colnames(ConsumerPriceDiff_Finfish_DF_FW) <- c("Species", 
+                                           "Price Pre-COVID", "Std Dev", 
+                                           "Price Post-COVID", "Std Dev",
+                                           "Price Difference (BDT per kg)", "Std Dev")
+ConsumerPriceDiff_Finfish_Table_FW <- kbl(ConsumerPriceDiff_Finfish_DF_FW) %>%
+  kable_paper("striped", full_width = FALSE)
+
+#####################################################################
+# Work out the means
+######################################################################
+ConsumerPriceDiff_MEAN_Finfish_DF_FW <- RawData_CONSUMER_FINFISH[!ConsumedSaltwaterFinfish %in% SaltWaterSpecies, 
+                                                            .(mean(PreCovidPaidPrice.kg, na.rm = TRUE),
+                                                            sd(PreCovidPaidPrice.kg, na.rm = TRUE),
+                                                            mean(PostCovidPaidPrice.kg, na.rm = TRUE),
+                                                            sd(PostCovidPaidPrice.kg, na.rm = TRUE),
+                                                            mean(PriceDiff, na.rm = TRUE),
+                                                            sd(PriceDiff, na.rm = TRUE))]
+colnames(ConsumerPriceDiff_MEAN_Finfish_DF_FW) <- c("Price Pre-COVID", "Std Dev", 
+                                           "Price Post-COVID", "Std Dev",
+                                           "Price Difference (BDT per kg)", "Std Dev")
+ConsumerPriceDiff_Finfish_MEAN_Table_FW <- kbl(ConsumerPriceDiff_MEAN_Finfish_DF_FW) %>%
+  kable_paper("striped", full_width = FALSE)
+###############################################################################
+
+ConsumerPercentDiff_Finfish_DF_FW <- RawData_CONSUMER_FINFISH[!ConsumedSaltwaterFinfish %in% SaltWaterSpecies, 
+                                                              .(mean(PercentChange, na.rm = TRUE),
+                                                                sd(PercentChange, na.rm = TRUE)), 
+                                                              ConsumedSaltwaterFinfish] 
+ConsumerPercentDiff_Finfish_Carp <- RawData_CONSUMER_FINFISH[ConsumedSaltwaterFinfish == "Cyprinus carpio" |
+                                                            ConsumedSaltwaterFinfish == "Cyprinus carpio var. specularis"    , 
+                                                              .(mean(PercentChange, na.rm = TRUE),
+                                                                sd(PercentChange, na.rm = TRUE))]
+ConsumerPercentDiff_Finfish_DF_FW <- rbind(
+  ConsumerPercentDiff_Finfish_DF_FW,
+  c("Common carp", ConsumerPercentDiff_Finfish_Carp),
+use.names = FALSE)
+colnames(ConsumerPercentDiff_Finfish_DF_FW) <- c("Species", "Percentage Change" ,"Std Dev")
+ConsumerPercentDiff_Finfish_Table_FW <- kbl(ConsumerPercentDiff_Finfish_DF_FW) %>%
+  kable_paper("striped", full_width = FALSE)
+
+#####################################################################
+# Work out the means
+######################################################################
+ConsumerPercentDiff_MEAN_Finfish_DF_FW <- RawData_CONSUMER_FINFISH[!ConsumedSaltwaterFinfish %in% SaltWaterSpecies, 
+                                                              .(mean(PercentChange, na.rm = TRUE),
+                                                                sd(PercentChange, na.rm = TRUE))]
+colnames(ConsumerPercentDiff_MEAN_Finfish_DF_FW) <- c("Mean Percentage Change" ,"Std Dev")
+ConsumerPercentDiff_MEAN_Finfish_Table_FW <- kbl(ConsumerPercentDiff_MEAN_Finfish_DF_FW) %>%
+  kable_paper("striped", full_width = FALSE)
+###############################################################################
+
+###############################################################################
+# Now the mark up on the products
+###############################################################################
+MarkUp_Finfish_DF_SW <- MeanMarkUpPrices_Finfish[ConsumedSaltwaterFinfish %in% SaltWaterSpecies, 
+                                                 .(PreCovidMarkUp = MarkUp_1, PostCovidMarkUp = MarkUp_2, Difference = MarkUpDifference), ConsumedSaltwaterFinfish]
+MarkUp_Finfish_Table_SW <- kbl(MarkUp_Finfish_DF_SW) %>%
+  kable_paper("striped", full_width = FALSE)
+
+MarkUpPercent_Finfish_DF_SW <- MeanMarkUpPrices_Finfish[ConsumedSaltwaterFinfish %in% SaltWaterSpecies, 
+                                                        .(PreCovidMarkUpPercentage = MarkUpPercentage_1, PostCovidMarkUpPercentage = MarkUpPercentage_2, Difference = MarkUpPercentageDifference), ConsumedSaltwaterFinfish]
+MarkUpPercent_Finfish_Table_SW <- kbl(MarkUpPercent_Finfish_DF_SW) %>%
+  kable_paper("striped", full_width = FALSE)
+
+#####################################################################
+# Work out the means
+######################################################################
+MarkUp_MEAN_Finfish_DF_SW <- MeanMarkUpPrices_Finfish[ConsumedSaltwaterFinfish %in% SaltWaterSpecies, 
+                                                 .(MEANPreCovidMarkUp = mean(MarkUp_1), MEANPostCovidMarkUp = mean(MarkUp_2), MEANDifference = mean(MarkUpDifference))]
+MarkUp__MEANFinfish_Table_SW <- kbl(MarkUp_MEAN_Finfish_DF_SW) %>%
+  kable_paper("striped", full_width = FALSE)
+
+MarkUpPercent_MEAN_Finfish_DF_SW <- MeanMarkUpPrices_Finfish[ConsumedSaltwaterFinfish %in% SaltWaterSpecies, 
+                                                        .(MEANPreCovidMarkUpPercentage = mean(MarkUpPercentage_1), MEANPostCovidMarkUpPercentage = mean(MarkUpPercentage_2), MEANDifference = mean(MarkUpPercentageDifference))]
+MarkUpPercent_MEAN_Finfish_Table_SW <- kbl(MarkUpPercent_MEAN_Finfish_DF_SW) %>%
+  kable_paper("striped", full_width = FALSE)
+###############################################################################
+
+MarkUp_Finfish_DF_FW <- MeanMarkUpPrices_Finfish[!ConsumedSaltwaterFinfish %in% SaltWaterSpecies, 
+                                                 .(PreCovidMarkUp = MarkUp_1, PostCovidMarkUp = MarkUp_2, Difference = MarkUpDifference), ConsumedSaltwaterFinfish]
+MarkUp_Finfish_DF_Carp <- MeanMarkUpPrices_Finfish[ConsumedSaltwaterFinfish == "Cyprinus carpio" |
+                                                  ConsumedSaltwaterFinfish == "Cyprinus carpio var. specularis", 
+                                                 .(PreCovidMarkUp = mean(MarkUp_1), PostCovidMarkUp = mean(MarkUp_2), Difference = mean(MarkUpDifference))]
+MarkUp_Finfish_DF_FW <- rbind(
+  MarkUp_Finfish_DF_FW,
+  c("Common carp", MarkUp_Finfish_DF_Carp),
+  use.names = FALSE
+)
+MarkUp_Finfish_Table_FW <- kbl(MarkUp_Finfish_DF_FW) %>%
+  kable_paper("striped", full_width = FALSE)
+
+# Here the percentages
+MarkUpPercent_Finfish_DF_FW <- MeanMarkUpPrices_Finfish[!ConsumedSaltwaterFinfish %in% SaltWaterSpecies, .(PreCovidMarkUpPercentage = MarkUpPercentage_1, PostCovidMarkUpPercentage = MarkUpPercentage_2, Difference = MarkUpPercentageDifference), ConsumedSaltwaterFinfish]
+
+MarkUpPercent_Finfish_DF_Carp <- MeanMarkUpPrices_Finfish[ConsumedSaltwaterFinfish == "Cyprinus carpio" |
+                                                  ConsumedSaltwaterFinfish == "Cyprinus carpio var. specularis",
+                                                  .(PreCovidMarkUpPercentage = mean(MarkUpPercentage_1), 
+                                                    PostCovidMarkUpPercentage = mean(MarkUpPercentage_2), 
+                                                    Difference = mean(MarkUpPercentageDifference))]
+MarkUpPercent_Finfish_DF_FW <- rbind(
+  MarkUpPercent_Finfish_DF_FW,
+  c("Common carp", MarkUpPercent_Finfish_DF_Carp),
+  use.names = FALSE
+)
+
+MarkUpPercent_Finfish_Table_FW <- kbl(MarkUpPercent_Finfish_DF_FW) %>%
+  kable_paper("striped", full_width = FALSE)
+
+#####################################################################
+# Work out the means
+######################################################################
+MarkUp_MEAN_Finfish_DF_FW <- MeanMarkUpPrices_Finfish[!ConsumedSaltwaterFinfish %in% SaltWaterSpecies, 
+                                                 .(MEANPreCovidMarkUp = mean(MarkUp_1), MEANPostCovidMarkUp = mean(MarkUp_2), MEANDifference = mean(MarkUpDifference))]
+MarkUp__MEANFinfish_Table_FW <- kbl(MarkUp_MEAN_Finfish_DF_FW) %>%
+  kable_paper("striped", full_width = FALSE)
+
+MarkUpPercent_MEAN_Finfish_DF_FW <- MeanMarkUpPrices_Finfish[!ConsumedSaltwaterFinfish %in% SaltWaterSpecies, 
+                                                        .(MEANPreCovidMarkUpPercentage = mean(MarkUpPercentage_1), MEANPostCovidMarkUpPercentage = mean(MarkUpPercentage_2), MEANDifference = mean(MarkUpPercentageDifference))]
+MarkUpPercent_MEAN_Finfish_Table_FW <- kbl(MarkUpPercent_MEAN_Finfish_DF_FW) %>%
+  kable_paper("striped", full_width = FALSE)
+###############################################################################
+
+```
+
+### Finfish Consumer Prices
+
+The number of prices obtained in our survey were:
+
+**Salt water species**  
+
+`r ConsumerNumbers_Finfish_Table_SW`
+
+**Salt water species**  
+
+`r ConsumerNumbers_Finfish_Table_FW`  
+
+The difference in mean prices paid by the consumer (as reported by the consumer) before and after COVID-19 were:
+
+**Salt water species**  
+`r ConsumerPriceDiff_Finfish_Table_SW`  
+
+And presented as the mean of all the species:
+
+`r ConsumerPriceDiff_Finfish_MEAN_Table_SW`  
+
+**Freshwater species**  
+
+`r ConsumerPriceDiff_Finfish_Table_FW` 
+
+And presented as the mean of all the species:
+
+`r ConsumerPriceDiff_Finfish_MEAN_Table_FW`
+
+As, percentage changes in prices this is:
+
+**Salt water species**  
+
+`r ConsumerPercentDiff_Finfish_Table_SW`  
+
+And the mean percentage change across all salt water species:  
+
+`r ConsumerPercentDiff_MEAN_Finfish_Table_SW`
+
+**Freshwater species**
+`r ConsumerPercentDiff_Finfish_Table_FW`  
+
+And the mean percentage change across all freshwater species:  
+
+`r ConsumerPercentDiff_MEAN_Finfish_Table_FW`
+
+### Finfish Mark Up Prices
+
+The difference in the mean price paid for by the consumer and the mean price obtained by the farmer was used to calculate the mark up on the product.  This was performed for pre- and post-COVID19.  
+
+**Salt water species**  
+`r MarkUp_Finfish_Table_SW`  
+
+And a mean of all the mark up for the salt water species.  
+
+`r MarkUp__MEANFinfish_Table_SW`  
+
+**Freshwater species**
+`r MarkUp_Finfish_Table_FW`  
+
+And a mean of all the mark up for the freshwater species.  
+
+`r MarkUp__MEANFinfish_Table_FW` 
+
+The markup percentage was calculated (the increase in cost between consumer and farmer as a percentage of the gate price).
+
+**Salt water species**  
+`r MarkUpPercent_Finfish_Table_SW`  
+
+And a mean of all the mark up percentage for the salt water species.  
+
+`r MarkUpPercent_MEAN_Finfish_Table_SW`  
+
+**Freshwater species**
+`r MarkUpPercent_Finfish_Table_FW`  
+
+And a mean of all the mark up percentage for the freshwater species.  
+
+`r MarkUpPercent_MEAN_Finfish_Table_FW`  
+
+```{r BoxPlots of the Price differences of Finfish, class.source = 'fold.hide'}
+########################################################################################
+# Box plots of the prices and price difference paid for finfish
+########################################################################################
+BoxPlotFinfishPricesSW <- plot_ly(data = RawData_CONSUMER_FINFISH, type = 'box') %>%
+  add_trace(y = RawData_CONSUMER_FINFISH[ConsumedSaltwaterFinfish == "Lates calcarifer", .(PreCovidPaidPrice.kg)]$PreCovidPaidPrice.kg,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Barramundi',
+            offsetgroup = 'PreCOVID',
+            fillcolor = PreCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_FINFISH[ConsumedSaltwaterFinfish == "Mystus vittatus", .(PreCovidPaidPrice.kg)]$PreCovidPaidPrice.kg,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Striped catfish',
+            offsetgroup = 'PreCOVID',
+            fillcolor = PreCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_FINFISH[ConsumedSaltwaterFinfish == "Labeo boga", .(PreCovidPaidPrice.kg)]$PreCovidPaidPrice.kg,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Labeo',
+            fillcolor = PreCovidFillColour,
+            offsetgroup = 'PreCOVID',
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_FINFISH[ConsumedSaltwaterFinfish == "Mugil cephalus", .(PreCovidPaidPrice.kg)]$PreCovidPaidPrice.kg,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Mullet',
+            fillcolor = PreCovidFillColour,
+            offsetgroup = 'PreCOVID',
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_FINFISH[ConsumedSaltwaterFinfish == "Scatophagus argus", .(PreCovidPaidPrice.kg)]$PreCovidPaidPrice.kg,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Scat',
+            fillcolor = PreCovidFillColour,
+            offsetgroup = 'PreCOVID',
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_FINFISH[ConsumedSaltwaterFinfish == "Pomadasys hasta", .(PreCovidPaidPrice.kg)]$PreCovidPaidPrice.kg,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Grunt',
+            offsetgroup = 'PreCOVID',
+            fillcolor = PreCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_FINFISH[ConsumedSaltwaterFinfish == "Lates calcarifer", .(PostCovidPaidPrice.kg)]$PostCovidPaidPrice.kg,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Barramundi',
+            offsetgroup = 'PostCOVID',
+            fillcolor = PostCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_FINFISH[ConsumedSaltwaterFinfish == "Mystus vittatus", .(PostCovidPaidPrice.kg)]$PostCovidPaidPrice.kg,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Striped catfish',
+            offsetgroup = 'PostCOVID',
+            fillcolor = PostCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_FINFISH[ConsumedSaltwaterFinfish == "Labeo boga", .(PostCovidPaidPrice.kg)]$PostCovidPaidPrice.kg,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Labeo',
+            offsetgroup = 'PostCOVID',
+            fillcolor = PostCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_FINFISH[ConsumedSaltwaterFinfish == "Mugil cephalus", .(PostCovidPaidPrice.kg)]$PostCovidPaidPrice.kg,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Mullet',
+            offsetgroup = 'PostCOVID',
+            fillcolor = PostCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_FINFISH[ConsumedSaltwaterFinfish == "Scatophagus argus", .(PostCovidPaidPrice.kg)]$PostCovidPaidPrice.kg,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Scat',
+            offsetgroup = 'PostCOVID',
+            fillcolor = PostCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_FINFISH[ConsumedSaltwaterFinfish == "Pomadasys hasta", .(PostCovidPaidPrice.kg)]$PostCovidPaidPrice.kg,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Grunt',
+            offsetgroup = 'PostCOVID',
+            fillcolor = PostCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  layout(showlegend = FALSE, boxmode = 'group', boxgap = 0.1, boxgroupgap = 0.2,
+         yaxis = list(showline = TRUE),
+         xaxis = list(showline = TRUE))
+
+BoxPlotFinfishPricesFW <- plot_ly(data = RawData_CONSUMER_FINFISH, type = 'box') %>%
+  add_trace(y = RawData_CONSUMER_FINFISH[ConsumedSaltwaterFinfish == "Labeo rohita", .(PreCovidPaidPrice.kg)]$PreCovidPaidPrice.kg,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Roho',
+            offsetgroup = 'PreCOVID',
+            fillcolor = PreCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_FINFISH[ConsumedSaltwaterFinfish == "Catla Catla", .(PreCovidPaidPrice.kg)]$PreCovidPaidPrice.kg,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Catla',
+            offsetgroup = 'PreCOVID',
+            fillcolor = PreCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_FINFISH[ConsumedSaltwaterFinfish == "Cyprinus carpio" |
+                                           ConsumedSaltwaterFinfish == "Cyprinus carpio var. specularis", .(PreCovidPaidPrice.kg)]$PreCovidPaidPrice.kg,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Common carp',
+            offsetgroup = 'PreCOVID',
+            fillcolor = PreCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_FINFISH[ConsumedSaltwaterFinfish == "Ctenopharyngodon idella", .(PreCovidPaidPrice.kg)]$PreCovidPaidPrice.kg,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Grass carp',
+            offsetgroup = 'PreCOVID',
+            fillcolor = PreCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_FINFISH[ConsumedSaltwaterFinfish == "Hypophthalmichthys molitrix", .(PreCovidPaidPrice.kg)]$PreCovidPaidPrice.kg,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Silver carp',
+            offsetgroup = 'PreCOVID',
+            fillcolor = PreCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_FINFISH[ConsumedSaltwaterFinfish == "Cirrhinus cirrhosis", .(PreCovidPaidPrice.kg)]$PreCovidPaidPrice.kg,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Mrigal',
+            offsetgroup = 'PreCOVID',
+            fillcolor = PreCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_FINFISH[ConsumedSaltwaterFinfish == "Puntius sarana", .(PreCovidPaidPrice.kg)]$PreCovidPaidPrice.kg,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Barb',
+            offsetgroup = 'PreCOVID',
+            fillcolor = PreCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_FINFISH[ConsumedSaltwaterFinfish == "Oreochromis mossambica", .(PreCovidPaidPrice.kg)]$PreCovidPaidPrice.kg,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Tilapia',
+            offsetgroup = 'PreCOVID',
+            fillcolor = PreCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_FINFISH[ConsumedSaltwaterFinfish == "Pangasianodon hypophthalmus", .(PreCovidPaidPrice.kg)]$PreCovidPaidPrice.kg,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Pangasius',
+            offsetgroup = 'PreCOVID',
+            fillcolor = PreCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_FINFISH[ConsumedSaltwaterFinfish == "Labeo rohita", .(PostCovidPaidPrice.kg)]$PostCovidPaidPrice.kg,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Roho',
+            offsetgroup = 'PostCOVID',
+            fillcolor = PostCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_FINFISH[ConsumedSaltwaterFinfish == "Catla Catla", .(PostCovidPaidPrice.kg)]$PostCovidPaidPrice.kg,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Catla',
+            offsetgroup = 'PostCOVID',
+            fillcolor = PostCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_FINFISH[ConsumedSaltwaterFinfish == "Cyprinus carpio" |
+                                           ConsumedSaltwaterFinfish == "Cyprinus carpio var. specularis", .(PostCovidPaidPrice.kg)]$PostCovidPaidPrice.kg,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Common carp',
+            offsetgroup = 'PostCOVID',
+            fillcolor = PostCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_FINFISH[ConsumedSaltwaterFinfish == "Ctenopharyngodon idella", .(PostCovidPaidPrice.kg)]$PostCovidPaidPrice.kg,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Grass carp',
+            offsetgroup = 'PostCOVID',
+            fillcolor = PostCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_FINFISH[ConsumedSaltwaterFinfish == "Hypophthalmichthys molitrix", .(PostCovidPaidPrice.kg)]$PostCovidPaidPrice.kg,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Silver carp',
+            offsetgroup = 'PostCOVID',
+            fillcolor = PostCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_FINFISH[ConsumedSaltwaterFinfish == "Cirrhinus cirrhosis", .(PostCovidPaidPrice.kg)]$PostCovidPaidPrice.kg,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Mrigal',
+            offsetgroup = 'PostCOVID',
+            fillcolor = PostCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_FINFISH[ConsumedSaltwaterFinfish == "Puntius sarana", .(PostCovidPaidPrice.kg)]$PostCovidPaidPrice.kg,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Barb',
+            offsetgroup = 'PostCOVID',
+            fillcolor = PreCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_FINFISH[ConsumedSaltwaterFinfish == "Oreochromis mossambica", .(PostCovidPaidPrice.kg)]$PostCovidPaidPrice.kg,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Tilapia',
+            offsetgroup = 'PostCOVID',
+            fillcolor = PostCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_FINFISH[ConsumedSaltwaterFinfish == "Pangasianodon hypophthalmus", .(PostCovidPaidPrice.kg)]$PostCovidPaidPrice.kg,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Pangasius',
+            offsetgroup = 'PostCOVID',
+            fillcolor = PostCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  layout(showlegend = FALSE, boxmode = 'group', boxgap = 0, boxgroupgap = 0.1,
+         yaxis = list(showline = TRUE),
+         xaxis = list(showline = TRUE))
+
+BoxPlotFinfishPriceDiffsSW <- plot_ly(data = RawData_CONSUMER_FINFISH, type = 'box') %>%
+  add_trace(y = RawData_CONSUMER_FINFISH[ConsumedSaltwaterFinfish == "Lates calcarifer", .(PriceDiff)]$PriceDiff,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Barramundi',
+            fillcolor = PreCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_FINFISH[ConsumedSaltwaterFinfish == "Mystus vittatus", .(PriceDiff)]$PriceDiff,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Striped catfish',
+            fillcolor = PreCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_FINFISH[ConsumedSaltwaterFinfish == "Labeo boga", .(PriceDiff)]$PriceDiff,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Labeo',
+            fillcolor = PreCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_FINFISH[ConsumedSaltwaterFinfish == "Mugil cephalus", .(PriceDiff)]$PriceDiff,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Mullet',
+            fillcolor = PreCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_FINFISH[ConsumedSaltwaterFinfish == "Scatophagus argus", .(PriceDiff)]$PriceDiff,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Scat',
+            fillcolor = PreCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_FINFISH[ConsumedSaltwaterFinfish == "Pomadasys hasta", .(PriceDiff)]$PriceDiff,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Grunt',
+            fillcolor = PreCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  layout(showlegend = FALSE,
+         yaxis = list(showline = TRUE),
+         xaxis = list(showline = TRUE))
+
+BoxPlotFinfishPriceDiffsFW <- plot_ly(data = RawData_CONSUMER_FINFISH, type = 'box') %>%
+  add_trace(y = RawData_CONSUMER_FINFISH[ConsumedSaltwaterFinfish == "Labeo rohita", .(PriceDiff)]$PriceDiff,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Roho',
+            fillcolor = PreCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_FINFISH[ConsumedSaltwaterFinfish == "Catla Catla", .(PriceDiff)]$PriceDiff,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Catla',
+            fillcolor = PreCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_FINFISH[ConsumedSaltwaterFinfish == "Cyprinus carpio" |
+                                         ConsumedSaltwaterFinfish == "Cyprinus carpio var. specularis"  , .(PriceDiff)]$PriceDiff,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Common carp',
+            fillcolor = PreCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_FINFISH[ConsumedSaltwaterFinfish == "Ctenopharyngodon idella", .(PriceDiff)]$PriceDiff,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Grass carp',
+            fillcolor = PreCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_FINFISH[ConsumedSaltwaterFinfish == "Hypophthalmichthys molitrix", .(PriceDiff)]$PriceDiff,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Silver carp',
+            fillcolor = PreCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_FINFISH[ConsumedSaltwaterFinfish == "Cirrhinus cirrhosis", .(PriceDiff)]$PriceDiff,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Mrigal',
+            fillcolor = PreCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_FINFISH[ConsumedSaltwaterFinfish == "Puntius sarana", .(PriceDiff)]$PriceDiff,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Barb',
+            fillcolor = PreCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_FINFISH[ConsumedSaltwaterFinfish == "Oreochromis mossambica", .(PriceDiff)]$PriceDiff,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Tilapia',
+            fillcolor = PreCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_FINFISH[ConsumedSaltwaterFinfish == "Pangasianodon hypophthalmus", .(PriceDiff)]$PriceDiff,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Pangasius',
+            fillcolor = PreCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  layout(showlegend = FALSE,
+         yaxis = list(showline = TRUE),
+         xaxis = list(showline = TRUE))
+
+
+# Box plot of percentage changes
+BoxPlotFinfishPricePercentChangeSW <- plot_ly(data = RawData_CONSUMER_FINFISH, type = 'box') %>%
+  add_trace(y = RawData_CONSUMER_FINFISH[ConsumedSaltwaterFinfish == "Lates calcarifer", .(PercentChange)]$PercentChange,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Barramundi',
+            fillcolor = PreCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_FINFISH[ConsumedSaltwaterFinfish == "Mystus vittatus", .(PercentChange)]$PercentChange,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Striped catfish',
+            fillcolor = PreCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_FINFISH[ConsumedSaltwaterFinfish == "Labeo boga", .(PercentChange)]$PercentChange,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Labeo',
+            fillcolor = PreCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_FINFISH[ConsumedSaltwaterFinfish == "Mugil cephalus", .(PercentChange)]$PercentChange,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Mullet',
+            fillcolor = PreCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_FINFISH[ConsumedSaltwaterFinfish == "Scatophagus argus", .(PercentChange)]$PercentChange,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Scat',
+            fillcolor = PreCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_FINFISH[ConsumedSaltwaterFinfish == "Pomadasys hasta", .(PercentChange)]$PercentChange,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Grunt',
+            fillcolor = PreCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  layout(showlegend = FALSE,
+         yaxis = list(showline = TRUE),
+         xaxis = list(showline = TRUE))
+
+BoxPlotFinfishPricePercentChangeFW <- plot_ly(data = RawData_CONSUMER_FINFISH, type = 'box') %>%
+  add_trace(y = RawData_CONSUMER_FINFISH[ConsumedSaltwaterFinfish == "Labeo rohita", .(PercentChange)]$PercentChange,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Roho',
+            fillcolor = PreCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_FINFISH[ConsumedSaltwaterFinfish == "Catla Catla", .(PercentChange)]$PercentChange,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Catla',
+            fillcolor = PreCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_FINFISH[ConsumedSaltwaterFinfish == "Cyprinus carpio" |
+                                           ConsumedSaltwaterFinfish == "Cyprinus carpio var. specularis", .(PercentChange)]$PercentChange,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Common carp',
+            fillcolor = PreCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_FINFISH[ConsumedSaltwaterFinfish == "Ctenopharyngodon idella", .(PercentChange)]$PercentChange,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Grass carp',
+            fillcolor = PreCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_FINFISH[ConsumedSaltwaterFinfish == "Hypophthalmichthys molitrix", .(PercentChange)]$PercentChange,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Silver carp',
+            fillcolor = PreCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_FINFISH[ConsumedSaltwaterFinfish == "Cirrhinus cirrhosis", .(PercentChange)]$PercentChange,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Mrigal',
+            fillcolor = PreCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_FINFISH[ConsumedSaltwaterFinfish == "Puntius sarana", .(PercentChange)]$PercentChange,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Barb',
+            fillcolor = PreCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_FINFISH[ConsumedSaltwaterFinfish == "Oreochromis mossambica", .(PercentChange)]$PercentChange,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Tilapia',
+            fillcolor = PreCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  add_trace(y = RawData_CONSUMER_FINFISH[ConsumedSaltwaterFinfish == "Pangasianodon hypophthalmus", .(PercentChange)]$PercentChange,
+            boxpoints = 'all', jitter = 0.3, pointpos = 0,
+            Notched = NotchedYN, boxmean = ShowMean,
+            name = 'Pangasius',
+            fillcolor = PreCovidFillColour,
+            marker = list(color = MarkerPointColour),
+            line = list(color = LineColour)) %>%
+  layout(showlegend = FALSE,
+         yaxis = list(showline = TRUE),
+         xaxis = list(showline = TRUE))
+
+```
+
+### Finfish Consumer Prices Box Plots
+
+Here is a boxplot of the shrimp prices pre and post COVID 19, split into freshwater and marine water species.
+
+**Marine Species**
+`r BoxPlotFinfishPricesSW`
+
+**Freshwater Species**
+`r BoxPlotFinfishPricesFW`
+
+Here as the price differences:  
+
+**Marine Species**
+`r BoxPlotFinfishPriceDiffsSW`  
+
+**Freshwater Species**
+`r BoxPlotFinfishPriceDiffsFW`  
+
+Here as the percentages:
+
+**Marine Species**
+`r BoxPlotFinfishPricePercentChangeSW`  
+
+**Freshwater Species**
+`r BoxPlotFinfishPricePercentChangeFW`  
+  
+  
+```{r Summary of MarkUp, class.source = 'fold.hide'}
+########################################################################################
+# Basic summary statistics of the prices paid
+########################################################################################
+
+```
+
+```{r Plots of the markups, class.source = 'fold.hide'}
+########################################################################################
+# Box plots of the prices and price difference paid for shrimp and finfish
+########################################################################################
+
+```
