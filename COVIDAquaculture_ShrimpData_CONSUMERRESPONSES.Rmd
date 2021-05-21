@@ -1,0 +1,402 @@
+---
+title: "ShrimpConsumerResponses"
+author: "Richard Heal"
+date: "5/16/2021"
+output: 
+  html_document:
+    code_folding: hide
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+
+library(kableExtra)
+#######################################################################
+# Load in the shrimp price data
+#######################################################################
+DataFile <- "ShrimpCovAqua_ConsumerAmontsReasons.csv"
+RawData_RESPONSES <- read.csv(DataFile, header = TRUE, skip = 0, stringsAsFactors = TRUE)
+
+#######################################################################
+# Convert to data table
+#######################################################################
+library(data.table)
+RawData_RESPONSES <- setDT(RawData_RESPONSES)
+
+# Strip out the amounts data
+RawData_AMOUNTS <- RawData_RESPONSES[ID != "", ]
+RawData_AMOUNTS[RawData_AMOUNTS == ""] <- NA
+
+# Make the amounts factors and calculate difference
+# Here a positive is increase in amount consumed and negative is a decrease
+
+# Badga
+RawData_AMOUNTS$AmountOfShrimpPurchase_PreCovid <- factor(RawData_AMOUNTS$AmountOfShrimpPurchase_PreCovid, 
+                                                                    c("< 0.5 kg/week", "0.5-1 kg/week", "1-2 kg/week","2-3 kg/week", "> 3 kg/week"))
+RawData_AMOUNTS$AmountOfShrimpPurchase_PostCovid <- factor(RawData_AMOUNTS$AmountOfShrimpPurchase_PostCovid, 
+                                                                    c("< 0.5 kg/week", "0.5-1 kg/week", "1-2 kg/week","2-3 kg/week", "> 3 kg/week"))
+RawData_AMOUNTS[, Bagda_AmountDiff := as.numeric(AmountOfShrimpPurchase_PostCovid) - as.numeric(AmountOfShrimpPurchase_PreCovid)]
+
+# Golda
+RawData_AMOUNTS$AmountOfPrawnPurchase_PreCovid <- factor(RawData_AMOUNTS$AmountOfPrawnPurchase_PreCovid, 
+                                                                    c("< 0.5 kg/week", "0.5-1 kg/week", "1-2 kg/week","2-3 kg/week", "> 3 kg/week"))
+RawData_AMOUNTS$AmountOfPrawnPurchase_PostCovid <- factor(RawData_AMOUNTS$AmountOfPrawnPurchase_PostCovid, 
+                                                                    c("< 0.5 kg/week", "0.5-1 kg/week", "1-2 kg/week","2-3 kg/week", "> 3 kg/week"))
+RawData_AMOUNTS[, Golda_AmountDiff := as.numeric(AmountOfPrawnPurchase_PostCovid) - as.numeric(AmountOfPrawnPurchase_PreCovid)]
+
+# Salt water finfish
+RawData_AMOUNTS$AmountOfSaltwaterFinfishPurchase_PreCovid <- factor(RawData_AMOUNTS$AmountOfSaltwaterFinfishPurchase_PreCovid, 
+                                                                    c("< 2 kg/week", "2-5 kg/week", "5-7 kg/week",  "7-10 kg/week", " > 10kg/week"))
+RawData_AMOUNTS$AmountOfSaltwaterFinfishPurchase_PostCovid <- factor(RawData_AMOUNTS$AmountOfSaltwaterFinfishPurchase_PostCovid, 
+                                                                    c("< 2 kg/week", "2-5 kg/week", "5-7 kg/week",  "7-10 kg/week", " > 10kg/week"))
+RawData_AMOUNTS[, SW_AmountDiff := as.numeric(AmountOfSaltwaterFinfishPurchase_PostCovid) - as.numeric(AmountOfSaltwaterFinfishPurchase_PreCovid)]
+
+# freshwater finfish
+RawData_AMOUNTS$AmountOfFreshwaterFinfishPurchase_PreCovid <- factor(RawData_AMOUNTS$AmountOfFreshwaterFinfishPurchase_PreCovid, 
+                                                                    c("< 2 kg/week", "2-5 kg/week", "5-7 kg/week",  "7-10 kg/week", " > 10kg/week"))
+RawData_AMOUNTS$AmountOfFreshwaterFinfishPurchase_PostCovid <- factor(RawData_AMOUNTS$AmountOfFreshwaterFinfishPurchase_PostCovid, 
+                                                                    c("< 2 kg/week", "2-5 kg/week", "5-7 kg/week",  "7-10 kg/week", " > 10kg/week"))
+RawData_AMOUNTS[, FW_AmountDiff := as.numeric(AmountOfFreshwaterFinfishPurchase_PostCovid) - as.numeric(AmountOfFreshwaterFinfishPurchase_PreCovid)]
+
+
+
+```
+
+## Analysis of Consumer Behaviour for Shrimp and Finfish purchase
+
+To understand the effect of COVID on the consumers that are local to the shrimp farms a survey was performed to find out their purchase patterns before and after COVID.  In this survey respondents were asked to provide the amount of product purchase before and after COVID, plus any reasons for the change in purchasing habit.
+
+For shrimp (Bagda) and prawn (Golda) the categories for amount purchased was <0.5kg/week, 0.5-1kg/week, 1-2kg/week, 2-3kg/week and >3kg/week.  
+
+For finfish the categories were <2kg/week, 2-5kg/week, 5-7kg/week, 7-10kg/week and > 10kg/week.  
+
+For the reasons that the amount purchased has changed the following responses were used:
+
+**Shrimp/Prawn:**  
+
+I have not changed the species of fish I buy
+I have changed the species because they are more available
+I have changed the species because they are cheaper
+I have changed the species because they are more nutritious
+I have changed the species because they are easier to prepare
+I have changed the species because they are better for the immune system
+Other (please use the comment box in the next question to explain this)
+
+**Finfish:**  
+
+I have not changed the species of fish I buy
+I have changed the species because they are more available
+I have changed the species because they are cheaper
+I have changed the species because they are more nutritious
+I have changed the species because they are easier to prepare
+I have changed the species because they are better for the immune system
+Other (please use the comment box in the next question to explain this)
+
+```{r Information on Change in amounts SHRIMP purchased, class.source = 'fold.hide'}
+################################################################################
+# Show the number of consumers that have indicated the amounts bought in each
+# category. Only show for those that have given a value for both pre and post
+# covid
+#
+# Also, show the reasons. Show just for those that have increased purchase
+# but also show the complete list
+#################################################################################
+
+# Here for shrimp
+ConsumerNumbers_Shrimp_DF <- data.frame(rbind(
+  c("Less than 0.5kg per week", RawData_AMOUNTS[!is.na(Bagda_AmountDiff) & AmountOfShrimpPurchase_PostCovid == "< 0.5 kg/week", .N], RawData_AMOUNTS[!is.na(Bagda_AmountDiff) & AmountOfShrimpPurchase_PreCovid == "< 0.5 kg/week", .N], (RawData_AMOUNTS[!is.na(Bagda_AmountDiff) & AmountOfShrimpPurchase_PostCovid == "< 0.5 kg/week", .N] - RawData_AMOUNTS[!is.na(Bagda_AmountDiff) & AmountOfShrimpPurchase_PreCovid == "< 0.5 kg/week", .N])),
+  
+  c("0.5 - 1 kg/week", RawData_AMOUNTS[!is.na(Bagda_AmountDiff) & AmountOfShrimpPurchase_PostCovid == "0.5-1 kg/week", .N], RawData_AMOUNTS[!is.na(Bagda_AmountDiff) & AmountOfShrimpPurchase_PreCovid == "0.5-1 kg/week", .N], (RawData_AMOUNTS[!is.na(Bagda_AmountDiff) & AmountOfShrimpPurchase_PostCovid == "0.5-1 kg/week", .N] - RawData_AMOUNTS[!is.na(Bagda_AmountDiff) & AmountOfShrimpPurchase_PreCovid == "0.5-1 kg/week", .N])),
+  
+  c("1-2 kg/week", RawData_AMOUNTS[!is.na(Bagda_AmountDiff) & AmountOfShrimpPurchase_PostCovid == "1-2 kg/week", .N], RawData_AMOUNTS[!is.na(Bagda_AmountDiff) & AmountOfShrimpPurchase_PreCovid == "1-2 kg/week", .N], (RawData_AMOUNTS[!is.na(Bagda_AmountDiff) & AmountOfShrimpPurchase_PostCovid == "1-2 kg/week", .N] - RawData_AMOUNTS[!is.na(Bagda_AmountDiff) & AmountOfShrimpPurchase_PreCovid == "1-2 kg/week", .N])),
+  
+  c("2-3 kg/week", RawData_AMOUNTS[!is.na(Bagda_AmountDiff) & AmountOfShrimpPurchase_PostCovid == "2-3 kg/week", .N], RawData_AMOUNTS[!is.na(Bagda_AmountDiff) & AmountOfShrimpPurchase_PreCovid == "2-3 kg/week", .N], (RawData_AMOUNTS[!is.na(Bagda_AmountDiff) & AmountOfShrimpPurchase_PostCovid == "2-3 kg/week", .N] - RawData_AMOUNTS[!is.na(Bagda_AmountDiff) & AmountOfShrimpPurchase_PreCovid == "2-3 kg/week", .N])),
+  
+  c("> 3 kg/week", RawData_AMOUNTS[!is.na(Bagda_AmountDiff) & AmountOfShrimpPurchase_PostCovid == "> 3 kg/week", .N], RawData_AMOUNTS[!is.na(Bagda_AmountDiff) & AmountOfShrimpPurchase_PreCovid == "> 3 kg/week", .N], (RawData_AMOUNTS[!is.na(Bagda_AmountDiff) & AmountOfShrimpPurchase_PostCovid == "> 3 kg/week", .N] - RawData_AMOUNTS[!is.na(Bagda_AmountDiff) & AmountOfShrimpPurchase_PreCovid == "> 3 kg/week", .N]))
+  
+))
+
+colnames(ConsumerNumbers_Shrimp_DF) <- c("Bagda Purchased Amount", 
+                                         "Number of Consumers PostCovid", 
+                                         "Number of Consumers PreCovid", 
+                                         "Difference")
+ConsumerNumbers_Shrimp_Table <- kbl(ConsumerNumbers_Shrimp_DF) %>%
+  kable_paper("striped", full_width = FALSE)
+
+# Here the reasons for only those consumers that have an increase in purchase between pre and post COVID
+Consumers_Shrimp_Reasons_DF <- RawData_AMOUNTS[Bagda_AmountDiff > 0, .N, Badga_ReasonAmount]
+colnames(Consumers_Shrimp_Reasons_DF) <- c("Reason Given", 
+                                           "Number of Consumers")
+Consumers_Shrimp_Reasons_Table <- kbl(Consumers_Shrimp_Reasons_DF) %>%
+  kable_paper("striped", full_width = FALSE)
+
+# Here the reasons for only those consumers that have an increase in purchase between pre and post COVID
+Consumers_Shrimp_ReasonsALL_DF <- RawData_AMOUNTS[!is.na(Badga_ReasonAmount), .N, Badga_ReasonAmount]
+colnames(Consumers_Shrimp_Reasons_DF) <- c("Reason Given", 
+                                           "Number of Consumers")
+Consumers_Shrimp_ReasonsALL_Table <- kbl(Consumers_Shrimp_ReasonsALL_DF) %>%
+  kable_paper("striped", full_width = FALSE)
+
+# Here for prawn
+ConsumerNumbers_Prawn_DF <- data.frame(rbind(
+  c("Less than 0.5kg per week", RawData_AMOUNTS[!is.na(Golda_AmountDiff) & AmountOfPrawnPurchase_PostCovid == "< 0.5 kg/week", .N], RawData_AMOUNTS[!is.na(Golda_AmountDiff) & AmountOfPrawnPurchase_PreCovid == "< 0.5 kg/week", .N], (RawData_AMOUNTS[!is.na(Golda_AmountDiff) & AmountOfPrawnPurchase_PostCovid == "< 0.5 kg/week", .N] - RawData_AMOUNTS[!is.na(Golda_AmountDiff) & AmountOfPrawnPurchase_PreCovid == "< 0.5 kg/week", .N])),
+  
+  c("0.5 - 1 kg/week", RawData_AMOUNTS[!is.na(Golda_AmountDiff) & AmountOfPrawnPurchase_PostCovid == "0.5-1 kg/week", .N], RawData_AMOUNTS[!is.na(Golda_AmountDiff) & AmountOfPrawnPurchase_PreCovid == "0.5-1 kg/week", .N], (RawData_AMOUNTS[!is.na(Golda_AmountDiff) & AmountOfPrawnPurchase_PostCovid == "0.5-1 kg/week", .N] - RawData_AMOUNTS[!is.na(Golda_AmountDiff) & AmountOfPrawnPurchase_PreCovid == "0.5-1 kg/week", .N])),
+  
+  c("1-2 kg/week", RawData_AMOUNTS[!is.na(Golda_AmountDiff) & AmountOfPrawnPurchase_PostCovid == "1-2 kg/week", .N], RawData_AMOUNTS[!is.na(Golda_AmountDiff) & AmountOfPrawnPurchase_PreCovid == "1-2 kg/week", .N], (RawData_AMOUNTS[!is.na(Golda_AmountDiff) & AmountOfPrawnPurchase_PostCovid == "1-2 kg/week", .N] - RawData_AMOUNTS[!is.na(Golda_AmountDiff) & AmountOfPrawnPurchase_PreCovid == "1-2 kg/week", .N])),
+  
+  c("2-3 kg/week", RawData_AMOUNTS[!is.na(Golda_AmountDiff) & AmountOfPrawnPurchase_PostCovid == "2-3 kg/week", .N], RawData_AMOUNTS[!is.na(Golda_AmountDiff) & AmountOfPrawnPurchase_PreCovid == "2-3 kg/week", .N], (RawData_AMOUNTS[!is.na(Golda_AmountDiff) & AmountOfPrawnPurchase_PostCovid == "2-3 kg/week", .N] - RawData_AMOUNTS[!is.na(Golda_AmountDiff) & AmountOfPrawnPurchase_PreCovid == "2-3 kg/week", .N])),
+  
+  c("> 3 kg/week", RawData_AMOUNTS[!is.na(Golda_AmountDiff) & AmountOfPrawnPurchase_PostCovid == "> 3 kg/week", .N], RawData_AMOUNTS[!is.na(Golda_AmountDiff) & AmountOfPrawnPurchase_PreCovid == "> 3 kg/week", .N], (RawData_AMOUNTS[!is.na(Golda_AmountDiff) & AmountOfPrawnPurchase_PostCovid == "> 3 kg/week", .N] - RawData_AMOUNTS[!is.na(Golda_AmountDiff) & AmountOfPrawnPurchase_PreCovid == "> 3 kg/week", .N]))
+))
+
+colnames(ConsumerNumbers_Prawn_DF) <- c("Golda Purchased Amount", 
+                                         "Number of Consumers PostCovid", 
+                                         "Number of Consumers PreCovid", 
+                                         "Difference")
+ConsumerNumbers_Prawn_Table <- kbl(ConsumerNumbers_Prawn_DF) %>%
+  kable_paper("striped", full_width = FALSE)
+
+# Here the reasons for only those consumers that have an increase in purchase between pre and post COVID
+Consumers_Prawn_Reasons_DF <- RawData_AMOUNTS[Golda_AmountDiff > 0, .N, Golda_Reason]
+colnames(Consumers_Prawn_Reasons_DF) <- c("Reason Given", 
+                                           "Number of Consumers")
+Consumers_Prawn_Reasons_Table <- kbl(Consumers_Prawn_Reasons_DF) %>%
+  kable_paper("striped", full_width = FALSE)
+
+# Here the reasons for only those consumers that have an decrease in purchase between pre and post COVID
+Consumers_Prawn_Reasons_DFDec <- RawData_AMOUNTS[Golda_AmountDiff < 0, .N, Golda_Reason]
+colnames(Consumers_Prawn_Reasons_DFDec) <- c("Reason Given", 
+                                           "Number of Consumers")
+Consumers_Prawn_ReasonsDec_Table <- kbl(Consumers_Prawn_Reasons_DFDec) %>%
+  kable_paper("striped", full_width = FALSE)
+
+# Here the reasons for only those consumers that have an increase in purchase between pre and post COVID
+Consumers_Prawn_ReasonsALL_DF <- RawData_AMOUNTS[!is.na(Golda_Reason), .N, Golda_Reason]
+colnames(Consumers_Prawn_Reasons_DF) <- c("Reason Given", 
+                                           "Number of Consumers")
+Consumers_Prawn_ReasonsALL_Table <- kbl(Consumers_Prawn_ReasonsALL_DF) %>%
+  kable_paper("striped", full_width = FALSE)
+```
+
+## Difference in the amount of shrimp purchased following COVID-19
+
+From the consumer survey the amount of shrimp purchased each week was recorded for pre- and post-COVID19. The differences in the categories are shown below.
+
+**For Bagda:**  
+
+As a result of the pandemic, for bagda **`r RawData_AMOUNTS[Bagda_AmountDiff > 0, .N]`** consumers increased the amount purchased, **`r RawData_AMOUNTS[Bagda_AmountDiff < 0, .N]`** decreased the amount, **`r RawData_AMOUNTS[Bagda_AmountDiff == 0, .N]`** did not change, and **`r RawData_AMOUNTS[is.na(Bagda_AmountDiff), .N]`** did not respond.  
+
+`r ConsumerNumbers_Shrimp_Table`
+
+Where an increase in purchase has been indicated the reasons given were:
+
+`r Consumers_Shrimp_Reasons_Table`  
+
+And the full table of reasons:
+`r Consumers_Shrimp_ReasonsALL_Table`  
+
+There were no other reasons for changing the amount of bagda purchased.
+
+**For Golda:**  
+
+As a result of the pandemic, for golda **`r RawData_AMOUNTS[Golda_AmountDiff > 0, .N]`** consumers increased the amount purchased, **`r RawData_AMOUNTS[Golda_AmountDiff < 0, .N]`** decreased the amount, **`r RawData_AMOUNTS[Golda_AmountDiff == 0, .N]`** did not change, and **`r RawData_AMOUNTS[is.na(Golda_AmountDiff), .N]`** did not respond.  
+
+`r ConsumerNumbers_Prawn_Table`
+
+Where an increase in purchase has been indicated the reasons given were:
+
+`r Consumers_Prawn_Reasons_Table`  
+
+Where an decrease in purchase has been indicated the reasons given were:
+
+`r Consumers_Prawn_ReasonsDec_Table`  
+
+And the full table of reasons:
+`r Consumers_Prawn_ReasonsALL_Table`  
+
+The other reasons given for changing the amount of golda purchased was:
+
+**`r RawData_AMOUNTS[!is.na(Golda_Reason_other),.N, Golda_Reason_other]$Golda_Reason_other`**
+
+The respondent who commented on prawn being more expensive than shrimp:
+
+`r RawData_AMOUNTS[Golda_Reason_other == "Prawn was more costly than the shrimp", .(AmountOfShrimpPurchase_PreCovid, AmountOfShrimpPurchase_PostCovid, AmountOfPrawnPurchase_PreCovid, AmountOfPrawnPurchase_PostCovid)]`  
+  
+### Overall for Shrimp & Prawn
+
+To understand the overall effect on the main crop shrimp/prawn the number of consumers that:
+
+ 1. Increased both golda and bagda was: **`r RawData_AMOUNTS[Bagda_AmountDiff>0 & Golda_AmountDiff >0, .N]`**  
+ 2. Increased golda and kept bagda the same was: **`r RawData_AMOUNTS[Bagda_AmountDiff==0 & Golda_AmountDiff >0, .N]`**  
+ 3. Increased bagda and kept golda the same was: **`r RawData_AMOUNTS[Bagda_AmountDiff>0 & Golda_AmountDiff ==0, .N]`**  
+ 4. Increased golda and decreased bagda was: **`r RawData_AMOUNTS[Bagda_AmountDiff<0 & Golda_AmountDiff >0, .N]`**  
+ 5. Increased bagda and decreased golda was: **`r RawData_AMOUNTS[Bagda_AmountDiff>0 & Golda_AmountDiff <0, .N]`**  
+ 6. Kept both bagda and golda the same: **`r RawData_AMOUNTS[Bagda_AmountDiff==0 & Golda_AmountDiff ==0, .N]`**  
+ 7. Decreased bagda and golda was: **`r RawData_AMOUNTS[Bagda_AmountDiff<0 & Golda_AmountDiff <0, .N]`**  
+ 8. Decreased bagda and kept golda the same: **`r RawData_AMOUNTS[Bagda_AmountDiff<0 & Golda_AmountDiff ==0, .N]`**  
+ 9. Decreased golda and kept bagda the same: **`r RawData_AMOUNTS[Bagda_AmountDiff==0 & Golda_AmountDiff <0, .N]`**  
+ 10. Missing information for either: **`r RawData_AMOUNTS[is.na(Bagda_AmountDiff) | is.na(Golda_AmountDiff), .N]`** 
+   
+ There were **`r RawData_AMOUNTS[Bagda_AmountDiff >= 0 & Golda_AmountDiff >= 0, .N]`** consumers who increased either purchase of bagda or golda without decreasing the purchase of either.  
+ 
+```{r Information on Change in amounts FINFISH purchased, class.source = 'fold.hide' }
+################################################################################
+# Show the number of consumers that have indicated the amounts bought in each
+# category. Only show for those that have given a value for both pre and post
+# covid
+#
+# Also, show the reasons. Show just for those that have increased purchase
+# but also show the complete list
+#################################################################################
+
+####################################################################
+# Salt water finfish
+####################################################################
+ConsumerNumbers_SW_DF <- data.frame(rbind(
+  c("Less than 2kg per week", RawData_AMOUNTS[!is.na(SW_AmountDiff ) & AmountOfSaltwaterFinfishPurchase_PostCovid == "< 2 kg/week", .N], RawData_AMOUNTS[!is.na(SW_AmountDiff ) & AmountOfSaltwaterFinfishPurchase_PreCovid == "< 2 kg/week", .N], (RawData_AMOUNTS[!is.na(SW_AmountDiff ) & AmountOfSaltwaterFinfishPurchase_PostCovid == "< 2 kg/week", .N] - RawData_AMOUNTS[!is.na(SW_AmountDiff ) & AmountOfSaltwaterFinfishPurchase_PreCovid == "< 2 kg/week", .N])),
+  
+  c("2-5 kg/week", RawData_AMOUNTS[!is.na(SW_AmountDiff ) & AmountOfSaltwaterFinfishPurchase_PostCovid == "2-5 kg/week", .N], RawData_AMOUNTS[!is.na(SW_AmountDiff ) & AmountOfSaltwaterFinfishPurchase_PreCovid == "2-5 kg/week", .N], (RawData_AMOUNTS[!is.na(SW_AmountDiff ) & AmountOfSaltwaterFinfishPurchase_PostCovid == "2-5 kg/week", .N] - RawData_AMOUNTS[!is.na(SW_AmountDiff ) & AmountOfSaltwaterFinfishPurchase_PreCovid == "2-5 kg/week", .N])),
+  
+  c("5-7 kg/week", RawData_AMOUNTS[!is.na(SW_AmountDiff ) & AmountOfSaltwaterFinfishPurchase_PostCovid == "5-7 kg/week", .N], RawData_AMOUNTS[!is.na(SW_AmountDiff ) & AmountOfSaltwaterFinfishPurchase_PreCovid == "5-7 kg/week", .N], (RawData_AMOUNTS[!is.na(SW_AmountDiff ) & AmountOfSaltwaterFinfishPurchase_PostCovid == "5-7 kg/week", .N] - RawData_AMOUNTS[!is.na(SW_AmountDiff ) & AmountOfSaltwaterFinfishPurchase_PreCovid == "5-7 kg/week", .N])),
+  
+  c("7-10 kg/week", RawData_AMOUNTS[!is.na(SW_AmountDiff ) & AmountOfSaltwaterFinfishPurchase_PostCovid == "7-10 kg/week", .N], RawData_AMOUNTS[!is.na(SW_AmountDiff ) & AmountOfSaltwaterFinfishPurchase_PreCovid == "7-10 kg/week", .N], (RawData_AMOUNTS[!is.na(SW_AmountDiff ) & AmountOfSaltwaterFinfishPurchase_PostCovid == "7-10 kg/week", .N] - RawData_AMOUNTS[!is.na(SW_AmountDiff ) & AmountOfSaltwaterFinfishPurchase_PreCovid == "7-10 kg/week", .N])),
+  
+  c("> 10 kg/week", RawData_AMOUNTS[!is.na(SW_AmountDiff ) & AmountOfSaltwaterFinfishPurchase_PostCovid == "> 10 kg/week", .N], RawData_AMOUNTS[!is.na(SW_AmountDiff ) & AmountOfSaltwaterFinfishPurchase_PreCovid == "> 10 kg/week", .N], (RawData_AMOUNTS[!is.na(SW_AmountDiff ) & AmountOfSaltwaterFinfishPurchase_PostCovid == "> 10 kg/week", .N] - RawData_AMOUNTS[!is.na(SW_AmountDiff ) & AmountOfSaltwaterFinfishPurchase_PreCovid == "> 10 kg/week", .N]))
+))
+
+colnames(ConsumerNumbers_SW_DF) <- c("Saltwater Finfish Purchased Amount", 
+                                         "Number of Consumers PostCovid", 
+                                         "Number of Consumers PreCovid", 
+                                         "Difference")
+ConsumerNumbers_SW_Table <- kbl(ConsumerNumbers_SW_DF) %>%
+  kable_paper("striped", full_width = FALSE)
+
+# Here the reasons for only those consumers that have an increase in purchase between pre and post COVID
+Consumers_SW_Reasons_DF <- RawData_AMOUNTS[SW_AmountDiff > 0, .N, SW_ReasonAmount]
+colnames(Consumers_SW_Reasons_DF) <- c("Reason Given", 
+                                           "Number of Consumers")
+Consumers_SW_Reasons_Table <- kbl(Consumers_SW_Reasons_DF) %>%
+  kable_paper("striped", full_width = FALSE)
+
+# Here the reasons for only those consumers that have an decrease in purchase between pre and post COVID
+Consumers_SW_Reasons_DFDec <- RawData_AMOUNTS[SW_AmountDiff < 0, .N, SW_ReasonAmount]
+colnames(Consumers_SW_Reasons_DFDec) <- c("Reason Given", 
+                                           "Number of Consumers")
+Consumers_SW_ReasonsDec_Table <- kbl(Consumers_SW_Reasons_DFDec) %>%
+  kable_paper("striped", full_width = FALSE)
+
+# Here the reasons for only those consumers that have an increase in purchase between pre and post COVID
+Consumers_SW_ReasonsALL_DF <- RawData_AMOUNTS[!is.na(SW_ReasonAmount), .N, SW_ReasonAmount]
+colnames(Consumers_SW_Reasons_DF) <- c("Reason Given", 
+                                           "Number of Consumers")
+Consumers_SW_ReasonsALL_Table <- kbl(Consumers_SW_ReasonsALL_DF) %>%
+  kable_paper("striped", full_width = FALSE)
+
+####################################################################
+# Freshwater finfish
+####################################################################
+ConsumerNumbers_FW_DF <- data.frame(rbind(
+  c("Less than 2kg per week", RawData_AMOUNTS[!is.na(FW_AmountDiff ) & AmountOfFreshwaterFinfishPurchase_PostCovid == "< 2 kg/week", .N], RawData_AMOUNTS[!is.na(FW_AmountDiff ) & AmountOfFreshwaterFinfishPurchase_PreCovid == "< 2 kg/week", .N], (RawData_AMOUNTS[!is.na(FW_AmountDiff ) & AmountOfFreshwaterFinfishPurchase_PostCovid == "< 2 kg/week", .N] - RawData_AMOUNTS[!is.na(FW_AmountDiff ) & AmountOfFreshwaterFinfishPurchase_PreCovid == "< 2 kg/week", .N])),
+  
+  c("2-5 kg/week", RawData_AMOUNTS[!is.na(FW_AmountDiff ) & AmountOfFreshwaterFinfishPurchase_PostCovid == "2-5 kg/week", .N], RawData_AMOUNTS[!is.na(FW_AmountDiff ) & AmountOfFreshwaterFinfishPurchase_PreCovid == "2-5 kg/week", .N], (RawData_AMOUNTS[!is.na(FW_AmountDiff ) & AmountOfFreshwaterFinfishPurchase_PostCovid == "2-5 kg/week", .N] - RawData_AMOUNTS[!is.na(FW_AmountDiff ) & AmountOfFreshwaterFinfishPurchase_PreCovid == "2-5 kg/week", .N])),
+  
+  c("5-7 kg/week", RawData_AMOUNTS[!is.na(FW_AmountDiff ) & AmountOfFreshwaterFinfishPurchase_PostCovid == "5-7 kg/week", .N], RawData_AMOUNTS[!is.na(FW_AmountDiff ) & AmountOfFreshwaterFinfishPurchase_PreCovid == "5-7 kg/week", .N], (RawData_AMOUNTS[!is.na(FW_AmountDiff ) & AmountOfFreshwaterFinfishPurchase_PostCovid == "5-7 kg/week", .N] - RawData_AMOUNTS[!is.na(FW_AmountDiff ) & AmountOfFreshwaterFinfishPurchase_PreCovid == "5-7 kg/week", .N])),
+  
+  c("7-10 kg/week", RawData_AMOUNTS[!is.na(FW_AmountDiff ) & AmountOfFreshwaterFinfishPurchase_PostCovid == "7-10 kg/week", .N], RawData_AMOUNTS[!is.na(FW_AmountDiff ) & AmountOfFreshwaterFinfishPurchase_PreCovid == "7-10 kg/week", .N], (RawData_AMOUNTS[!is.na(FW_AmountDiff ) & AmountOfFreshwaterFinfishPurchase_PostCovid == "7-10 kg/week", .N] - RawData_AMOUNTS[!is.na(FW_AmountDiff ) & AmountOfFreshwaterFinfishPurchase_PreCovid == "7-10 kg/week", .N])),
+  
+  c("> 10 kg/week", RawData_AMOUNTS[!is.na(FW_AmountDiff ) & AmountOfFreshwaterFinfishPurchase_PostCovid == "> 10 kg/week", .N], RawData_AMOUNTS[!is.na(FW_AmountDiff ) & AmountOfFreshwaterFinfishPurchase_PreCovid == "> 10 kg/week", .N], (RawData_AMOUNTS[!is.na(FW_AmountDiff ) & AmountOfFreshwaterFinfishPurchase_PostCovid == "> 10 kg/week", .N] - RawData_AMOUNTS[!is.na(FW_AmountDiff ) & AmountOfFreshwaterFinfishPurchase_PreCovid == "> 10 kg/week", .N]))
+))
+
+colnames(ConsumerNumbers_FW_DF) <- c("Freshwater Finfish Purchased Amount", 
+                                         "Number of Consumers PostCovid", 
+                                         "Number of Consumers PreCovid", 
+                                         "Difference")
+ConsumerNumbers_FW_Table <- kbl(ConsumerNumbers_FW_DF) %>%
+  kable_paper("striped", full_width = FALSE)
+
+# Here the reasons for only those consumers that have an increase in purchase between pre and post COVID
+Consumers_FW_Reasons_DF <- RawData_AMOUNTS[FW_AmountDiff > 0, .N, FW_ReasonAmount]
+colnames(Consumers_FW_Reasons_DF) <- c("Reason Given", 
+                                           "Number of Consumers")
+Consumers_FW_Reasons_Table <- kbl(Consumers_FW_Reasons_DF) %>%
+  kable_paper("striped", full_width = FALSE)
+
+# Here the reasons for only those consumers that have an decrease in purchase between pre and post COVID
+Consumers_FW_Reasons_DFDec <- RawData_AMOUNTS[FW_AmountDiff < 0, .N, FW_ReasonAmount]
+colnames(Consumers_FW_Reasons_DFDec) <- c("Reason Given", 
+                                           "Number of Consumers")
+Consumers_FW_ReasonsDec_Table <- kbl(Consumers_FW_Reasons_DFDec) %>%
+  kable_paper("striped", full_width = FALSE)
+
+# Here the reasons for only those consumers that have an increase in purchase between pre and post COVID
+Consumers_FW_ReasonsALL_DF <- RawData_AMOUNTS[!is.na(FW_ReasonAmount), .N, FW_ReasonAmount]
+colnames(Consumers_FW_Reasons_DF) <- c("Reason Given", 
+                                           "Number of Consumers")
+Consumers_FW_ReasonsALL_Table <- kbl(Consumers_FW_ReasonsALL_DF) %>%
+  kable_paper("striped", full_width = FALSE)
+```
+
+## Difference in the amount of finfish purchased following COVID-19
+
+From the consumer survey the amount of shrimp purchased each week was recorded for pre- and post-COVID19. The differences in the categories are shown below.
+
+**For saltwater finfish:**  
+
+As a result of the pandemic, for saltwater finfish **`r RawData_AMOUNTS[SW_AmountDiff  > 0, .N]`** consumers increased the amount purchased, **`r RawData_AMOUNTS[SW_AmountDiff  < 0, .N]`** decreased the amount, **`r RawData_AMOUNTS[SW_AmountDiff  == 0, .N]`** did not change, and **`r RawData_AMOUNTS[is.na(SW_AmountDiff ), .N]`** did not respond.  
+
+`r ConsumerNumbers_SW_Table`
+
+Where an increase in purchase has been indicated the reasons given were:
+
+`r Consumers_SW_Reasons_Table`  
+
+Where an decrease in purchase has been indicated the reasons given were:
+
+`r Consumers_SW_ReasonsDec_Table`  
+
+And the full table of reasons:
+`r Consumers_SW_ReasonsALL_Table`  
+
+The other reasons given for changing the amount of saltwater finfish purchased was:
+
+**`r RawData_AMOUNTS[!is.na(SW_ReasonAmount_other), .N, SW_ReasonAmount_other]$SW_ReasonAmount_other`**
+
+**For freshwater finfish:**  
+
+As a result of the pandemic, for freshwater finfish **`r RawData_AMOUNTS[FW_AmountDiff  > 0, .N]`** consumers increased the amount purchased, **`r RawData_AMOUNTS[FW_AmountDiff  < 0, .N]`** decreased the amount, **`r RawData_AMOUNTS[FW_AmountDiff  == 0, .N]`** did not change, and **`r RawData_AMOUNTS[is.na(FW_AmountDiff ), .N]`** did not respond.  
+
+`r ConsumerNumbers_FW_Table`
+
+Where an increase in purchase has been indicated the reasons given were:
+
+`r Consumers_FW_Reasons_Table`  
+
+Where an decrease in purchase has been indicated the reasons given were:
+
+`r Consumers_FW_ReasonsDec_Table`  
+
+And the full table of reasons:
+`r Consumers_FW_ReasonsALL_Table`  
+
+The other reasons given for changing the amount of freshwater finfish purchased was:
+
+**`r RawData_AMOUNTS[!is.na(FW_ReasonAmount_other), .N, FW_ReasonAmount_other]$FW_ReasonAmount_other`**  
+  
+  
+### Overall for Finfish
+
+To understand the overall effect on the main crop shrimp/prawn the number of consumers that:
+
+ 1. Increased both Freshwater finfish and Saltwater finfish was: **`r RawData_AMOUNTS[FW_AmountDiff>0 & SW_AmountDiff >0, .N]`**  
+ 2. Increased Freshwater finfish and kept Saltwater finfish the same was: **`r RawData_AMOUNTS[FW_AmountDiff==0 & SW_AmountDiff >0, .N]`**  
+ 3. Increased Saltwater finfish and kept Freshwater finfish the same was: **`r RawData_AMOUNTS[FW_AmountDiff>0 & SW_AmountDiff ==0, .N]`**  
+ 4. Increased Freshwater finfish and decreased Saltwater finfish was: **`r RawData_AMOUNTS[FW_AmountDiff<0 & SW_AmountDiff >0, .N]`**  
+ 5. Increased Saltwater finfish and decreased Freshwater finfish was: **`r RawData_AMOUNTS[FW_AmountDiff>0 & SW_AmountDiff <0, .N]`**  
+ 6. Kept both Saltwater finfish and Freshwater finfish the same: **`r RawData_AMOUNTS[FW_AmountDiff==0 & SW_AmountDiff ==0, .N]`**  
+ 7. Decreased Saltwater finfish and Freshwater finfish was: **`r RawData_AMOUNTS[FW_AmountDiff<0 & SW_AmountDiff <0, .N]`**  
+ 8. Decreased Saltwater finfish and kept Freshwater finfish the same: **`r RawData_AMOUNTS[FW_AmountDiff<0 & SW_AmountDiff ==0, .N]`**  
+ 9. Decreased Freshwater finfish and kept Saltwater finfish the same: **`r RawData_AMOUNTS[FW_AmountDiff==0 & SW_AmountDiff <0, .N]`**  
+ 10. Missing information for either: **`r RawData_AMOUNTS[is.na(FW_AmountDiff) | is.na(SW_AmountDiff), .N]`** 
+   
+ There were **`r RawData_AMOUNTS[SW_AmountDiff >= 0 & FW_AmountDiff >= 0, .N]`** consumers who increased either purchase of saltwater or freshwater finfish without decreasing the purchase of either.  
