@@ -1,0 +1,147 @@
+---
+title: "ShrimpCOVID19DataAnalysis_CONSUMERDETAILS"
+author: "Richard Heal"
+date: "06/09/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+#######################################################################
+# Load in the shrimp consumer information
+#######################################################################
+ConsumerInfoDataFile <- "COVIDAquaculture_ShrimpData_CONSUMERDETAILS.csv"
+ConsumerInfo_DataTable <- read.csv(ConsumerInfoDataFile, header = TRUE, skip = 0, stringsAsFactors = FALSE)
+
+#######################################################################
+# Sort out tables for analysis
+#######################################################################
+library(data.table)
+library(kableExtra)
+
+ConsumerInfo_DataTable <- setDT(ConsumerInfo_DataTable)
+
+# Produce data frame for output table
+# Overall demographics - Age/Education/Employment/Income bracket
+# Then by market
+ConsumerInfo_DataFrame <- data.frame(rbind(
+  c("Location", 
+    "All",
+    ConsumerInfo_DataTable[MarketID == "M1", .N, Address]$Address,
+    ConsumerInfo_DataTable[MarketID == "M2", .N, Address]$Address,
+    ConsumerInfo_DataTable[MarketID == "M3", .N, Address]$Address),
+  c("Number of Respondents", 
+    ConsumerInfo_DataTable[, .N],
+    ConsumerInfo_DataTable[MarketID == "M1", .N],
+    ConsumerInfo_DataTable[MarketID == "M2", .N],
+    ConsumerInfo_DataTable[MarketID == "M3", .N]),
+  
+  c("Age Profile - mean", 
+    ConsumerInfo_DataTable[, round(mean(Age), digits = 2)],
+    ConsumerInfo_DataTable[MarketID == "M1", round(mean(Age), digits = 2)],
+    ConsumerInfo_DataTable[MarketID == "M2", round(mean(Age), digits = 2)],
+    ConsumerInfo_DataTable[MarketID == "M3", round(mean(Age), digits = 2)]),
+  c("Age Profile - std", 
+    ConsumerInfo_DataTable[, round(sd(Age), digits = 2)],
+    ConsumerInfo_DataTable[MarketID == "M1", round(sd(Age), digits = 2)],
+    ConsumerInfo_DataTable[MarketID == "M2", round(sd(Age), digits = 2)],
+    ConsumerInfo_DataTable[MarketID == "M3", round(sd(Age), digits = 2)]),
+  
+  c("Age Profile - median", 
+    ConsumerInfo_DataTable[, round(median(Age), digits = 2)],
+    ConsumerInfo_DataTable[MarketID == "M1", round(median(Age), digits = 2)],
+    ConsumerInfo_DataTable[MarketID == "M2", round(median(Age), digits = 2)],
+    ConsumerInfo_DataTable[MarketID == "M3", round(median(Age), digits = 2)]),
+  c("Age Profile - mad", 
+    ConsumerInfo_DataTable[, round(mad(Age), digits = 2)],
+    ConsumerInfo_DataTable[MarketID == "M1", round(mad(Age), digits = 2)],
+    ConsumerInfo_DataTable[MarketID == "M2", round(mad(Age), digits = 2)],
+    ConsumerInfo_DataTable[MarketID == "M3", round(mad(Age), digits = 2)]),
+  
+  c("Age Profile - max", 
+    ConsumerInfo_DataTable[, round(max(Age), digits = 2)],
+    ConsumerInfo_DataTable[MarketID == "M1", round(max(Age), digits = 2)],
+    ConsumerInfo_DataTable[MarketID == "M2", round(max(Age), digits = 2)],
+    ConsumerInfo_DataTable[MarketID == "M3", round(max(Age), digits = 2)]),
+  c("Age Profile - min", 
+    ConsumerInfo_DataTable[, round(min(Age), digits = 2)],
+    ConsumerInfo_DataTable[MarketID == "M1", round(min(Age), digits = 2)],
+    ConsumerInfo_DataTable[MarketID == "M2", round(min(Age), digits = 2)],
+    ConsumerInfo_DataTable[MarketID == "M3", round(min(Age), digits = 2)]),
+  
+  c("Gender Profile - male", 
+    ConsumerInfo_DataTable[Gender == "Male", .N],
+    ConsumerInfo_DataTable[Gender == "Male" & MarketID == "M1", .N],
+    ConsumerInfo_DataTable[Gender == "Male" & MarketID == "M2", .N],
+    ConsumerInfo_DataTable[Gender == "Male" & MarketID == "M3", .N]),
+  c("Gender Profile - female", 
+    ConsumerInfo_DataTable[Gender == "Female", .N],
+    ConsumerInfo_DataTable[Gender == "Female" & MarketID == "M1", .N],
+    ConsumerInfo_DataTable[Gender == "Female" & MarketID == "M2", .N],
+    ConsumerInfo_DataTable[Gender == "Female" & MarketID == "M3", .N]),
+  
+  c("Education Profile - Higher education (University)", 
+    ConsumerInfo_DataTable[Education == "Higher education (University)", .N],
+    ConsumerInfo_DataTable[Education == "Higher education (University)" & MarketID == "M1", .N],
+    ConsumerInfo_DataTable[Education == "Higher education (University)" & MarketID == "M2", .N],
+    ConsumerInfo_DataTable[Education == "Higher education (University)" & MarketID == "M3", .N]),
+  c("Education Profile - Secondary", 
+    ConsumerInfo_DataTable[Education == "Secondary", .N],
+    ConsumerInfo_DataTable[Education == "Secondary" & MarketID == "M1", .N],
+    ConsumerInfo_DataTable[Education == "Secondary" & MarketID == "M2", .N],
+    ConsumerInfo_DataTable[Education == "Secondary" & MarketID == "M3", .N]),
+  c("Education Profile - Primary", 
+    ConsumerInfo_DataTable[Education == "Primary", .N],
+    ConsumerInfo_DataTable[Education == "Primary" & MarketID == "M1", .N],
+    ConsumerInfo_DataTable[Education == "Primary" & MarketID == "M2", .N],
+    ConsumerInfo_DataTable[Education == "Primary" & MarketID == "M3", .N]),
+  c("Education Profile - Other", 
+    ConsumerInfo_DataTable[Education == "Other", .N],
+    ConsumerInfo_DataTable[Education == "Other" & MarketID == "M1", .N],
+    ConsumerInfo_DataTable[Education == "Other" & MarketID == "M2", .N],
+    ConsumerInfo_DataTable[Education == "Other" & MarketID == "M3", .N]),
+  
+  c("Employment Profile - Government", 
+    ConsumerInfo_DataTable[Employment == "Govt employee" | Employment == "Government employee" , .N],
+    ConsumerInfo_DataTable[(MarketID == "M1" & Employment == "Govt employee") | (MarketID == "M1" & Employment == "Government employee"), .N],
+    ConsumerInfo_DataTable[(MarketID == "M2" & Employment == "Govt employee") | (MarketID == "M2" & Employment == "Government employee"), .N],
+    ConsumerInfo_DataTable[(MarketID == "M3" & Employment == "Govt employee") | (MarketID == "M3" & Employment == "Government employee"), .N]),
+  c("Employment Profile - Non-Government", 
+    ConsumerInfo_DataTable[Employment == "Non-government employee" | Employment == "Business man" , .N],
+    ConsumerInfo_DataTable[(MarketID == "M1" & Employment == "Non-government employee") | (MarketID == "M1" & Employment == "Business man"), .N],
+    ConsumerInfo_DataTable[(MarketID == "M2" & Employment == "Non-government employee") | (MarketID == "M2" & Employment == "Business man"), .N],
+    ConsumerInfo_DataTable[(MarketID == "M3" & Employment == "Non-government employee") | (MarketID == "M3" & Employment == "Business man"), .N]),
+  c("Employment Profile - Farmer/Labourer", 
+    ConsumerInfo_DataTable[Employment == "Govt employee" | Employment == "Government employee" , .N],
+    ConsumerInfo_DataTable[(MarketID == "M1" & Employment == "Other (Farmer)") | (MarketID == "M1" & Employment == "Days man"), .N],
+    ConsumerInfo_DataTable[(MarketID == "M2" & Employment == "Other (Farmer)") | (MarketID == "M2" & Employment == "Days man"), .N],
+    ConsumerInfo_DataTable[(MarketID == "M3" & Employment == "Other (Farmer)") | (MarketID == "M3" & Employment == "Days man"), .N]),
+  
+  c("Income Profile - 10,000-30,000 BDT", 
+    ConsumerInfo_DataTable[MonthlyIncome == "10,000 - 30,000 BDT", .N],
+    ConsumerInfo_DataTable[MonthlyIncome == "10,000 - 30,000 BDT" & MarketID == "M1", .N],
+    ConsumerInfo_DataTable[MonthlyIncome == "10,000 - 30,000 BDT" & MarketID == "M2", .N],
+    ConsumerInfo_DataTable[MonthlyIncome == "10,000 - 30,000 BDT" & MarketID == "M3", .N]),
+  c("Income Profile - 30,000 - 50,000 BDT", 
+    ConsumerInfo_DataTable[MonthlyIncome == "30,000 - 50,000 BDT", .N],
+    ConsumerInfo_DataTable[MonthlyIncome == "30,000 - 50,000 BDT" & MarketID == "M1", .N],
+    ConsumerInfo_DataTable[MonthlyIncome == "30,000 - 50,000 BDT" & MarketID == "M2", .N],
+    ConsumerInfo_DataTable[MonthlyIncome == "30,000 - 50,000 BDT" & MarketID == "M3", .N]),
+  c("Income Profile - 50,000 - 80,000 BDT", 
+    ConsumerInfo_DataTable[MonthlyIncome == "50,000 - 80,000 BDT", .N],
+    ConsumerInfo_DataTable[MonthlyIncome == "50,000 - 80,000 BDT" & MarketID == "M1", .N],
+    ConsumerInfo_DataTable[MonthlyIncome == "50,000 - 80,000 BDT" & MarketID == "M2", .N],
+    ConsumerInfo_DataTable[MonthlyIncome == "50,000 - 80,000 BDT" & MarketID == "M3", .N])
+  
+))
+colnames(ConsumerInfo_DataFrame) <- c("Parameter", "Overall", "Market 1", "Market 2", "Market 3")
+
+ConsumerInfoOutputTable_html <- kbl(ConsumerInfo_DataFrame) %>%
+  kable_paper(full_width = FALSE)
+```
+
+## Details of the Consumers
+
+In this section we provide information about the consumers and their demographic.
+
+`r ConsumerInfoOutputTable_html`

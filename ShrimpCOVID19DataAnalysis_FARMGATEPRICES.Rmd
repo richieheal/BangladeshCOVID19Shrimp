@@ -187,11 +187,11 @@ After covid19 the mean gate prices for fish were:
  M. monoceros: **`r MeanGate_MetaM_2`** +/- **`r StdGate_MetaM_2`**    
  
 The percentage increase in prices were:  
-  P. monodon: **`r (MeanGate_PenM_2 - MeanGate_PenM_1) / MeanGate_PenM_2 * 100`**  
-  M. rosengerbii: **`r (MeanGate_MacR_2 - MeanGate_MacR_1) / MeanGate_MacR_2 * 100`**  
-  P. orientalis: **`r (MeanGate_PenO_2 - MeanGate_PenO_1) / MeanGate_PenO_2 * 100`**  
-  M. brevicornis: **`r (MeanGate_MetaB_2 - MeanGate_MetaB_1) / MeanGate_MetaB_2 * 100`**  
-  M. monoceros: **`r (MeanGate_MetaM_2 - MeanGate_MetaM_1) / MeanGate_MetaM_2 * 100`**  
+  P. monodon: **`r (MeanGate_PenM_2 - MeanGate_PenM_1) / MeanGate_PenM_1 * 100`**  
+  M. rosengerbii: **`r (MeanGate_MacR_2 - MeanGate_MacR_1) / MeanGate_MacR_1 * 100`**  
+  P. orientalis: **`r (MeanGate_PenO_2 - MeanGate_PenO_1) / MeanGate_PenO_1 * 100`**  
+  M. brevicornis: **`r (MeanGate_MetaB_2 - MeanGate_MetaB_1) / MeanGate_MetaB_1 * 100`**  
+  M. monoceros: **`r (MeanGate_MetaM_2 - MeanGate_MetaM_1) / MeanGate_MetaM_1 * 100`**  
 
 ```{r Statistical analysis of significance of price changes, include=FALSE}
 ############################################################
@@ -335,7 +335,7 @@ DumbbellPlot_PenM_1 <- plot_ly(data = RawData_PRICES[CulturedSpecies == "Peneaus
     annotations = list(text = PenM_MARKET_TTest_Symbol, font = SIGFONT, showarrow = FALSE,
                          x = MeanGate_PenM_2, xref = "x",
                          y = 1.05, yref = "paper"),
-    xaxis = list(title = "Bagda<br>", font = AxisTitleFONT,
+    xaxis = list(title = "<I>P. monodon<br>", font = AxisTitleFONT,
                  range = c(RawData_PRICES[CulturedSpecies == "Peneaus monodon", min(ShrimpPrice_1, ShrimpPrice_2)] - 100,
                            RawData_PRICES[CulturedSpecies == "Peneaus monodon", max(ShrimpPrice_1, ShrimpPrice_2)] + 100), showline = TRUE, showgrid = FALSE),
     yaxis = list(title = "Farm",showticklabels = FALSE,
@@ -389,7 +389,7 @@ DumbbellPlot_MacR_1 <- plot_ly(data = RawData_PRICES[CulturedSpecies == "Macrobr
     annotations = list(text = MacR_MARKET_TTest_Symbol, font = SIGFONT, showarrow = FALSE,
                          x = MeanGate_MacR_2, xref = "x",
                          y = 1.05, yref = "paper"),
-    xaxis = list(title = "Golda<br>", font = AxisTitleFONT,
+    xaxis = list(title = "<I>M. rosenbergii<br>", font = AxisTitleFONT,
                  range = c(RawData_PRICES[CulturedSpecies == "Macrobrachium rosenbergii", min(ShrimpPrice_1, ShrimpPrice_2)] - 100,
                            RawData_PRICES[CulturedSpecies == "Macrobrachium rosenbergii", max(ShrimpPrice_1, ShrimpPrice_2)] + 100), showline = TRUE, showgrid = FALSE),
     yaxis = list(title = "Farm",showticklabels = FALSE,
@@ -443,7 +443,7 @@ DumbbellPlot_MetaB_1 <- plot_ly(data = RawData_PRICES[CulturedSpecies == "Metape
     annotations = list(text = MetaB_MARKET_TTest_Symbol, font = SIGFONT, showarrow = FALSE,
                          x = MeanGate_MetaB_2, xref = "x",
                          y = 1.05, yref = "paper"),
-    xaxis = list(title = "Chali chingri<br>", font = AxisTitleFONT,
+    xaxis = list(title = "<I>M. brevicornis<br>", font = AxisTitleFONT,
                  range = c(RawData_PRICES[CulturedSpecies == "Metapenaeus brevicornis", min(ShrimpPrice_1, ShrimpPrice_2)] - 100,
                            RawData_PRICES[CulturedSpecies == "Metapenaeus brevicornis", max(ShrimpPrice_1, ShrimpPrice_2)] + 100), showline = TRUE, showgrid = FALSE),
     yaxis = list(title = "Farm",showticklabels = FALSE,
@@ -497,7 +497,7 @@ DumbbellPlot_MetaM_1 <- plot_ly(data = RawData_PRICES[CulturedSpecies == "Metape
     annotations = list(text = MetaM_MARKET_TTest_Symbol, font = SIGFONT, showarrow = FALSE,
                          x = MeanGate_MetaM_2, xref = "x",
                          y = 1.05, yref = "paper"),
-    xaxis = list(title = "Horina chingri<br>", font = AxisTitleFONT,
+    xaxis = list(title = "<I>M. monoceros<br>", font = AxisTitleFONT,
                  range = c(RawData_PRICES[CulturedSpecies == "Metapenaeus monoceros", min(ShrimpPrice_1, ShrimpPrice_2)] - 100,
                            RawData_PRICES[CulturedSpecies == "Metapenaeus monoceros", max(ShrimpPrice_1, ShrimpPrice_2)] + 100), showline = TRUE, showgrid = FALSE),
     yaxis = list(title = "Farm",showticklabels = FALSE,

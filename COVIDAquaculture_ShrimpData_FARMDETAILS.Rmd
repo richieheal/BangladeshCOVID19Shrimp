@@ -1,0 +1,334 @@
+---
+title: "ShrimpCOVID19DataAnalysis_FARMDETAILS"
+author: "Richard Heal"
+date: "06/09/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+#######################################################################
+# Load in the shrimp price data
+#######################################################################
+ShrimpSpeciesDataFile <- "COVIDAquaculture_ShrimpData_PRICES.csv"
+ShrimpSpecies_DataTable <- read.csv(ShrimpSpeciesDataFile, header = TRUE, skip = 0, stringsAsFactors = TRUE)
+FarmStaffInfo <- "COVIDAquaculture_ShrimpData_STAFF_NUMBERS.csv"
+FarmStaffInfo_DataTable <- read.csv(FarmStaffInfo, header = TRUE, skip = 0, stringsAsFactors = TRUE)
+
+#######################################################################
+# Sort out tables for analysis
+#######################################################################
+library(data.table)
+library(kableExtra)
+
+ShrimpSpecies_DataTable <- setDT(ShrimpSpecies_DataTable)
+FarmStaffInfo_DataTable <- setDT(FarmStaffInfo_DataTable)
+
+# Merge the tables for the extensive vs semi-intensive details
+FarmDetails_DataTable <- merge(ShrimpSpecies_DataTable, FarmStaffInfo_DataTable,
+                               by = "FarmID",
+                               all = TRUE)
+# Get just the main species from the list
+FarmDetails_DataTable <- FarmDetails_DataTable[MainSpecies.x == "Y", ]
+FarmDetails_DataTable[, CulturedSpecies := trimws(CulturedSpecies)]
+# Convert the farm size to hectares
+FarmDetails_DataTable[, FarmSize_Hectares := FarmSize_Decimal.x * 0.00404686]
+
+# Get the total number of employees per farm
+FarmDetails_DataTable[, TotalEmployee_PRE := (Perm_N_1+Seas_N_1+NoAq_N_1)]
+FarmDetails_DataTable[, TotalEmployee_POST := (Perm_N_2+Seas_N_2+NoAq_N_2)]
+
+# Determine if the farm is LARGE, SMALL or MEDIUM as per Murray 2013
+FarmDetails_DataTable[FarmSize_Hectares >= 6, FarmScale := "Large"]
+FarmDetails_DataTable[FarmSize_Hectares > 1 & FarmSize_Hectares < 6, FarmScale := "Medium"]
+FarmDetails_DataTable[FarmSize_Hectares <= 1, FarmScale := "Small"]
+
+# Produce table for output:
+# - Farm size (mean, median, st, MAD)
+# - Number of P.mono and M b
+# - Number shrimp co
+# - Number finfish co
+
+FarmDetailsOutputTable <- data.frame(rbind(
+  c("Number of Farms", 
+    FarmDetails_DataTable[, .N],
+    FarmDetails_DataTable[Intensity == "Extensive", .N],
+    FarmDetails_DataTable[Intensity == "Semi", .N]),
+  
+  c("Number of Large Farms based on Murray 2013 farm sizes", 
+    FarmDetails_DataTable[FarmScale == "Large", .N],
+    FarmDetails_DataTable[FarmScale == "Large" & Intensity == "Extensive", .N],
+    FarmDetails_DataTable[FarmScale == "Large" & Intensity == "Semi", .N]),
+  c("Number of Medium Farms based on Murray 2013 farm sizes", 
+    FarmDetails_DataTable[FarmScale == "Medium", .N],
+    FarmDetails_DataTable[FarmScale == "Medium" & Intensity == "Extensive", .N],
+    FarmDetails_DataTable[FarmScale == "Medium" & Intensity == "Semi", .N]),
+  c("Number of Small Farms based on Murray 2013 farm sizes", 
+    FarmDetails_DataTable[FarmScale == "Small", .N],
+    FarmDetails_DataTable[FarmScale == "Small" & Intensity == "Extensive", .N],
+    FarmDetails_DataTable[FarmScale == "Small" & Intensity == "Semi", .N]),
+  
+  c("Number of P. monodon Large Farms based on Murray 2013 farm sizes", 
+    FarmDetails_DataTable[CulturedSpecies == "Peneaus monodon" & FarmScale == "Large", .N],
+    FarmDetails_DataTable[CulturedSpecies == "Peneaus monodon" & FarmScale == "Large" & Intensity == "Extensive", .N],
+    FarmDetails_DataTable[CulturedSpecies == "Peneaus monodon" & FarmScale == "Large" & Intensity == "Semi", .N]),
+  c("Number of P. monodon Medium Farms based on Murray 2013 farm sizes", 
+    FarmDetails_DataTable[CulturedSpecies == "Peneaus monodon" & FarmScale == "Medium", .N],
+    FarmDetails_DataTable[CulturedSpecies == "Peneaus monodon" & FarmScale == "Medium" & Intensity == "Extensive", .N],
+    FarmDetails_DataTable[CulturedSpecies == "Peneaus monodon" & FarmScale == "Medium" & Intensity == "Semi", .N]),
+  c("Number of P. monodon Small Farms based on Murray 2013 farm sizes", 
+    FarmDetails_DataTable[CulturedSpecies == "Peneaus monodon" & FarmScale == "Small", .N],
+    FarmDetails_DataTable[CulturedSpecies == "Peneaus monodon" & FarmScale == "Small" & Intensity == "Extensive", .N],
+    FarmDetails_DataTable[CulturedSpecies == "Peneaus monodon" & FarmScale == "Small" & Intensity == "Semi", .N]),
+  
+  c("Number of M. rosenbergii Large Farms based on Murray 2013 farm sizes", 
+    FarmDetails_DataTable[CulturedSpecies == "Macrobrachium rosenbergii" & FarmScale == "Large", .N],
+    FarmDetails_DataTable[CulturedSpecies == "Macrobrachium rosenbergii" & FarmScale == "Large" & Intensity == "Extensive", .N],
+    FarmDetails_DataTable[CulturedSpecies == "Macrobrachium rosenbergii" & FarmScale == "Large" & Intensity == "Semi", .N]),
+  c("Number of M. rosenbergii Medium Farms based on Murray 2013 farm sizes", 
+    FarmDetails_DataTable[CulturedSpecies == "Macrobrachium rosenbergii" & FarmScale == "Medium", .N],
+    FarmDetails_DataTable[CulturedSpecies == "Macrobrachium rosenbergii" & FarmScale == "Medium" & Intensity == "Extensive", .N],
+    FarmDetails_DataTable[CulturedSpecies == "Macrobrachium rosenbergii" & FarmScale == "Medium" & Intensity == "Semi", .N]),
+  c("Number of M. rosenbergii Small Farms based on Murray 2013 farm sizes", 
+    FarmDetails_DataTable[CulturedSpecies == "Macrobrachium rosenbergii" & FarmScale == "Small", .N],
+    FarmDetails_DataTable[CulturedSpecies == "Macrobrachium rosenbergii" & FarmScale == "Small" & Intensity == "Extensive", .N],
+    FarmDetails_DataTable[CulturedSpecies == "Macrobrachium rosenbergii" & FarmScale == "Small" & Intensity == "Semi", .N]),
+  
+  c("Number of Farms co-culturing shrimp", 
+    FarmDetails_DataTable[ShrimpCoCulture == "Y", .N],
+    FarmDetails_DataTable[ShrimpCoCulture == "Y" & Intensity == "Extensive", .N],
+    FarmDetails_DataTable[ShrimpCoCulture == "Y" & Intensity == "Semi", .N]),
+  c("Number of Farms co-culturing finfish", 
+    FarmDetails_DataTable[FinfishCoCulture == "Y", .N],
+    FarmDetails_DataTable[FinfishCoCulture == "Y" & Intensity == "Extensive", .N],
+    FarmDetails_DataTable[FinfishCoCulture == "Y" & Intensity == "Semi", .N]),
+  c("Number of Farms co-culturing shrimp and finfish", 
+    FarmDetails_DataTable[ShrimpCoCulture == "Y" & FinfishCoCulture == "Y", .N],
+    FarmDetails_DataTable[ShrimpCoCulture == "Y" & FinfishCoCulture == "Y" & Intensity == "Extensive", .N],
+    FarmDetails_DataTable[ShrimpCoCulture == "Y" & FinfishCoCulture == "Y" & Intensity == "Semi", .N]),
+  c("Number of Farms not co-culturing shrimp or finfish", 
+    FarmDetails_DataTable[ShrimpCoCulture == "N" & FinfishCoCulture == "N", .N],
+    FarmDetails_DataTable[ShrimpCoCulture == "N" & FinfishCoCulture == "N" & Intensity == "Extensive", .N],
+    FarmDetails_DataTable[ShrimpCoCulture == "N" & FinfishCoCulture == "N" & Intensity == "Semi", .N]),
+  
+  c("Number of P. monodon Farms", 
+    FarmDetails_DataTable[CulturedSpecies == "Peneaus monodon", .N],
+    FarmDetails_DataTable[CulturedSpecies == "Peneaus monodon" & Intensity == "Extensive", .N],
+    FarmDetails_DataTable[CulturedSpecies == "Peneaus monodon" & Intensity == "Semi", .N]),
+  c("Number of P. monodon Farms co-culturing shrimp", 
+    FarmDetails_DataTable[CulturedSpecies == "Peneaus monodon" & ShrimpCoCulture == "Y", .N],
+    FarmDetails_DataTable[CulturedSpecies == "Peneaus monodon" & ShrimpCoCulture == "Y" & Intensity == "Extensive", .N],
+    FarmDetails_DataTable[CulturedSpecies == "Peneaus monodon" & ShrimpCoCulture == "Y" & Intensity == "Semi", .N]),
+  c("Number of P. monodon Farms co-culturing finfish", 
+    FarmDetails_DataTable[CulturedSpecies == "Peneaus monodon" & FinfishCoCulture == "Y", .N],
+    FarmDetails_DataTable[CulturedSpecies == "Peneaus monodon" & FinfishCoCulture == "Y" & Intensity == "Extensive", .N],
+    FarmDetails_DataTable[CulturedSpecies == "Peneaus monodon" & FinfishCoCulture == "Y" & Intensity == "Semi", .N]),
+  c("Number of P. monodon Farms co-culturing shrimp and finfish", 
+    FarmDetails_DataTable[CulturedSpecies == "Peneaus monodon" & ShrimpCoCulture == "Y" & FinfishCoCulture == "Y", .N],
+    FarmDetails_DataTable[CulturedSpecies == "Peneaus monodon" & ShrimpCoCulture == "Y" & FinfishCoCulture == "Y" & Intensity == "Extensive", .N],
+    FarmDetails_DataTable[CulturedSpecies == "Peneaus monodon" & ShrimpCoCulture == "Y" & FinfishCoCulture == "Y" & Intensity == "Semi", .N]),
+  c("Number of P. monodon Farms not co-culturing shrimp or finfish", 
+    FarmDetails_DataTable[CulturedSpecies == "Peneaus monodon" & ShrimpCoCulture == "N" & FinfishCoCulture == "N", .N],
+    FarmDetails_DataTable[CulturedSpecies == "Peneaus monodon" & ShrimpCoCulture == "N" & FinfishCoCulture == "N" & Intensity == "Extensive", .N],
+    FarmDetails_DataTable[CulturedSpecies == "Peneaus monodon" & ShrimpCoCulture == "N" & FinfishCoCulture == "N" & Intensity == "Semi", .N]),
+  
+  c("Number of M. rosenbergii 
+ Farms", 
+    FarmDetails_DataTable[CulturedSpecies == "Macrobrachium rosenbergii", .N],
+    FarmDetails_DataTable[CulturedSpecies == "Macrobrachium rosenbergii" & Intensity == "Extensive", .N],
+    FarmDetails_DataTable[CulturedSpecies == "Macrobrachium rosenbergii" & Intensity == "Semi", .N]),
+ c("Number of M. rosenbergii Farms co-culturing shrimp", 
+    FarmDetails_DataTable[CulturedSpecies == "Macrobrachium rosenbergii" & ShrimpCoCulture == "Y", .N],
+    FarmDetails_DataTable[CulturedSpecies == "Macrobrachium rosenbergii" & ShrimpCoCulture == "Y" & Intensity == "Extensive", .N],
+    FarmDetails_DataTable[CulturedSpecies == "Macrobrachium rosenbergii" & ShrimpCoCulture == "Y" & Intensity == "Semi", .N]),
+  c("Number of M. rosenbergii Farms co-culturing finfish", 
+    FarmDetails_DataTable[CulturedSpecies == "Macrobrachium rosenbergii" & FinfishCoCulture == "Y", .N],
+    FarmDetails_DataTable[CulturedSpecies == "Macrobrachium rosenbergii" & FinfishCoCulture == "Y" & Intensity == "Extensive", .N],
+    FarmDetails_DataTable[CulturedSpecies == "Macrobrachium rosenbergii" & FinfishCoCulture == "Y" & Intensity == "Semi", .N]),
+  c("Number of M. rosenbergii Farms co-culturing shrimp and finfish", 
+    FarmDetails_DataTable[CulturedSpecies == "Macrobrachium rosenbergii" & ShrimpCoCulture == "Y" & FinfishCoCulture == "Y", .N],
+    FarmDetails_DataTable[CulturedSpecies == "Macrobrachium rosenbergii" & ShrimpCoCulture == "Y" & FinfishCoCulture == "Y" & Intensity == "Extensive", .N],
+    FarmDetails_DataTable[CulturedSpecies == "Macrobrachium rosenbergii" & ShrimpCoCulture == "Y" & FinfishCoCulture == "Y" & Intensity == "Semi", .N]),
+  c("Number of M. rosenbergii Farms not co-culturing shrimp or finfish", 
+    FarmDetails_DataTable[CulturedSpecies == "Macrobrachium rosenbergii" & ShrimpCoCulture == "N" & FinfishCoCulture == "N", .N],
+    FarmDetails_DataTable[CulturedSpecies == "Macrobrachium rosenbergii" & ShrimpCoCulture == "N" & FinfishCoCulture == "N" & Intensity == "Extensive", .N],
+    FarmDetails_DataTable[CulturedSpecies == "Macrobrachium rosenbergii" & ShrimpCoCulture == "N" & FinfishCoCulture == "N" & Intensity == "Semi", .N]),
+ 
+  c("Mean Farm Size (decimals)", 
+    FarmDetails_DataTable[, round(mean(FarmSize_Decimal.x), digits = 2)],
+    FarmDetails_DataTable[Intensity == "Extensive", round(mean(FarmSize_Decimal.x), digits = 2)],
+    FarmDetails_DataTable[Intensity == "Semi", round(mean(FarmSize_Decimal.x), digits = 2)]),
+  c("Median Farm Size (decimals)", 
+    FarmDetails_DataTable[, round(median(FarmSize_Decimal.x), digits = 2)],
+    FarmDetails_DataTable[Intensity == "Extensive", round(median(FarmSize_Decimal.x), digits = 2)],
+    FarmDetails_DataTable[Intensity == "Semi", round(median(FarmSize_Decimal.x), digits = 2)]),
+  c("Std Farm Size (decimals)", 
+    FarmDetails_DataTable[, round(sd(FarmSize_Decimal.x), digits = 2)],
+    FarmDetails_DataTable[Intensity == "Extensive", round(sd(FarmSize_Decimal.x), digits = 2)],
+    FarmDetails_DataTable[Intensity == "Semi", round(sd(FarmSize_Decimal.x), digits = 2)]),
+  c("MAD Farm Size (decimals)", 
+    FarmDetails_DataTable[, round(mad(FarmSize_Decimal.x), digits = 2)],
+    FarmDetails_DataTable[Intensity == "Extensive", round(mad(FarmSize_Decimal.x), digits = 2)],
+    FarmDetails_DataTable[Intensity == "Semi", round(mad(FarmSize_Decimal.x), digits = 2)]),
+  c("Mean Farm Size (hectares)", 
+    FarmDetails_DataTable[, round(mean(FarmSize_Hectares), digits = 2)],
+    FarmDetails_DataTable[Intensity == "Extensive", round(mean(FarmSize_Hectares), digits = 2)],
+    FarmDetails_DataTable[Intensity == "Semi", round(mean(FarmSize_Hectares), digits = 2)]),
+  c("Median Farm Size (hectares)", 
+    FarmDetails_DataTable[, round(median(FarmSize_Hectares), digits = 2)],
+    FarmDetails_DataTable[Intensity == "Extensive", round(median(FarmSize_Hectares), digits = 2)],
+    FarmDetails_DataTable[Intensity == "Semi", round(median(FarmSize_Hectares), digits = 2)]),
+  c("Std Farm Size (hectares)", 
+    FarmDetails_DataTable[, round(sd(FarmSize_Hectares), digits = 2)],
+    FarmDetails_DataTable[Intensity == "Extensive", round(sd(FarmSize_Hectares), digits = 2)],
+    FarmDetails_DataTable[Intensity == "Semi", round(sd(FarmSize_Hectares), digits = 2)]),
+  c("MAD Farm Size (hectares)", 
+    FarmDetails_DataTable[, round(mad(FarmSize_Hectares), digits = 2)],
+    FarmDetails_DataTable[Intensity == "Extensive", round(mad(FarmSize_Hectares), digits = 2)],
+    FarmDetails_DataTable[Intensity == "Semi", round(mad(FarmSize_Hectares), digits = 2)]),
+ c("P. monodon Mean Farm Size (hectares)", 
+    FarmDetails_DataTable[CulturedSpecies == "Peneaus monodon", round(mean(FarmSize_Hectares), digits = 2)],
+    FarmDetails_DataTable[CulturedSpecies == "Peneaus monodon" & Intensity == "Extensive", round(mean(FarmSize_Hectares), digits = 2)],
+    FarmDetails_DataTable[CulturedSpecies == "Peneaus monodon" & Intensity == "Semi", round(mean(FarmSize_Hectares), digits = 2)]),
+  c("P. monodon Median Farm Size (hectares)", 
+    FarmDetails_DataTable[CulturedSpecies == "Peneaus monodon", round(median(FarmSize_Hectares), digits = 2)],
+    FarmDetails_DataTable[CulturedSpecies == "Peneaus monodon" & Intensity == "Extensive", round(median(FarmSize_Hectares), digits = 2)],
+    FarmDetails_DataTable[CulturedSpecies == "Peneaus monodon" & Intensity == "Semi", round(median(FarmSize_Hectares), digits = 2)]),
+  c("P. monodon Std Farm Size (hectares)", 
+    FarmDetails_DataTable[CulturedSpecies == "Peneaus monodon", round(sd(FarmSize_Hectares), digits = 2)],
+    FarmDetails_DataTable[CulturedSpecies == "Peneaus monodon" & Intensity == "Extensive", round(sd(FarmSize_Hectares), digits = 2)],
+    FarmDetails_DataTable[CulturedSpecies == "Peneaus monodon" & Intensity == "Semi", round(sd(FarmSize_Hectares), digits = 2)]),
+  c("P. monodon MAD Farm Size (hectares)", 
+    FarmDetails_DataTable[CulturedSpecies == "Peneaus monodon", round(mad(FarmSize_Hectares), digits = 2)],
+    FarmDetails_DataTable[CulturedSpecies == "Peneaus monodon" & Intensity == "Extensive", round(mad(FarmSize_Hectares), digits = 2)],
+    FarmDetails_DataTable[CulturedSpecies == "Peneaus monodon" & Intensity == "Semi", round(mad(FarmSize_Hectares), digits = 2)]),
+  c("M. rosenbergii Mean Farm Size (hectares)", 
+    FarmDetails_DataTable[CulturedSpecies == "Macrobrachium rosenbergii", round(mean(FarmSize_Hectares), digits = 2)],
+    FarmDetails_DataTable[CulturedSpecies == "Macrobrachium rosenbergii" & Intensity == "Extensive", round(mean(FarmSize_Hectares), digits = 2)],
+    FarmDetails_DataTable[CulturedSpecies == "Macrobrachium rosenbergii" & Intensity == "Semi", round(mean(FarmSize_Hectares), digits = 2)]),
+  c("M. rosenbergii Median Farm Size (hectares)", 
+    FarmDetails_DataTable[CulturedSpecies == "Macrobrachium rosenbergii", round(median(FarmSize_Hectares), digits = 2)],
+    FarmDetails_DataTable[CulturedSpecies == "Macrobrachium rosenbergii" & Intensity == "Extensive", round(median(FarmSize_Hectares), digits = 2)],
+    FarmDetails_DataTable[CulturedSpecies == "Macrobrachium rosenbergii" & Intensity == "Semi", round(median(FarmSize_Hectares), digits = 2)]),
+  c("M. rosenbergii Std Farm Size (hectares)", 
+    FarmDetails_DataTable[CulturedSpecies == "Macrobrachium rosenbergii", round(sd(FarmSize_Hectares), digits = 2)],
+    FarmDetails_DataTable[CulturedSpecies == "Macrobrachium rosenbergii" & Intensity == "Extensive", round(sd(FarmSize_Hectares), digits = 2)],
+    FarmDetails_DataTable[CulturedSpecies == "Macrobrachium rosenbergii" & Intensity == "Semi", round(sd(FarmSize_Hectares), digits = 2)]),
+  c("M. rosenbergii MAD Farm Size (hectares)", 
+    FarmDetails_DataTable[CulturedSpecies == "Macrobrachium rosenbergii", round(mad(FarmSize_Hectares), digits = 2)],
+    FarmDetails_DataTable[CulturedSpecies == "Macrobrachium rosenbergii" & Intensity == "Extensive", round(mad(FarmSize_Hectares), digits = 2)],
+    FarmDetails_DataTable[CulturedSpecies == "Macrobrachium rosenbergii" & Intensity == "Semi", round(mad(FarmSize_Hectares), digits = 2)]),
+ 
+ c("Mean Number of Staff pre-covid", 
+    FarmDetails_DataTable[, round(mean(TotalEmployee_PRE), digits = 1)],
+    FarmDetails_DataTable[Intensity == "Extensive", round(mean(TotalEmployee_PRE), digits = 1)],
+    FarmDetails_DataTable[Intensity == "Semi", round(mean(TotalEmployee_PRE), digits = 1)]),
+ c("Std Number of Staff pre-covid", 
+    FarmDetails_DataTable[, round(sd(TotalEmployee_PRE), digits = 1)],
+    FarmDetails_DataTable[Intensity == "Extensive", round(sd(TotalEmployee_PRE), digits = 1)],
+    FarmDetails_DataTable[Intensity == "Semi", round(sd(TotalEmployee_PRE), digits = 1)]),
+ c("Mean Number of Staff post-covid", 
+    FarmDetails_DataTable[, round(mean(TotalEmployee_POST), digits = 1)],
+    FarmDetails_DataTable[Intensity == "Extensive", round(mean(TotalEmployee_POST), digits = 1)],
+    FarmDetails_DataTable[Intensity == "Semi", round(mean(TotalEmployee_POST), digits = 1)]),
+ c("Std Number of Staff post-covid", 
+    FarmDetails_DataTable[, round(sd(TotalEmployee_POST), digits = 1)],
+    FarmDetails_DataTable[Intensity == "Extensive", round(sd(TotalEmployee_POST), digits = 1)],
+    FarmDetails_DataTable[Intensity == "Semi", round(sd(TotalEmployee_POST), digits = 1)]),
+ 
+ c("P. monodon farms Mean Number of Staff pre-covid", 
+    FarmDetails_DataTable[CulturedSpecies == "Peneaus monodon", round(mean(TotalEmployee_PRE), digits = 1)],
+    FarmDetails_DataTable[CulturedSpecies == "Peneaus monodon" & Intensity == "Extensive", round(mean(TotalEmployee_PRE), digits = 1)],
+    FarmDetails_DataTable[CulturedSpecies == "Peneaus monodon" & Intensity == "Semi", round(mean(TotalEmployee_PRE), digits = 1)]),
+ c("P. monodon farms Std Number of Staff pre-covid", 
+    FarmDetails_DataTable[CulturedSpecies == "Peneaus monodon", round(sd(TotalEmployee_PRE), digits = 1)],
+    FarmDetails_DataTable[CulturedSpecies == "Peneaus monodon" & Intensity == "Extensive", round(sd(TotalEmployee_PRE), digits = 1)],
+    FarmDetails_DataTable[CulturedSpecies == "Peneaus monodon" & Intensity == "Semi", round(sd(TotalEmployee_PRE), digits = 1)]),
+ c("P. monodon farms Mean Number of Staff post-covid", 
+    FarmDetails_DataTable[CulturedSpecies == "Peneaus monodon", round(mean(TotalEmployee_POST), digits = 1)],
+    FarmDetails_DataTable[CulturedSpecies == "Peneaus monodon" & Intensity == "Extensive", round(mean(TotalEmployee_POST), digits = 1)],
+    FarmDetails_DataTable[CulturedSpecies == "Peneaus monodon" & Intensity == "Semi", round(mean(TotalEmployee_POST), digits = 1)]),
+ c("P. monodon farms Std Number of Staff post-covid", 
+    FarmDetails_DataTable[CulturedSpecies == "Peneaus monodon", round(sd(TotalEmployee_POST), digits = 1)],
+    FarmDetails_DataTable[CulturedSpecies == "Peneaus monodon" & Intensity == "Extensive", round(sd(TotalEmployee_POST), digits = 1)],
+    FarmDetails_DataTable[CulturedSpecies == "Peneaus monodon" & Intensity == "Semi", round(sd(TotalEmployee_POST), digits = 1)]),
+ 
+ c("M. rosenbergii farms Mean Number of Staff pre-covid", 
+    FarmDetails_DataTable[CulturedSpecies == "Macrobrachium rosenbergii", round(mean(TotalEmployee_PRE), digits = 1)],
+    FarmDetails_DataTable[CulturedSpecies == "Macrobrachium rosenbergii" & Intensity == "Extensive", round(mean(TotalEmployee_PRE), digits = 1)],
+    FarmDetails_DataTable[CulturedSpecies == "Macrobrachium rosenbergii" & Intensity == "Semi", round(mean(TotalEmployee_PRE), digits = 1)]),
+ c("M. rosenbergii farms Std Number of Staff pre-covid", 
+    FarmDetails_DataTable[CulturedSpecies == "Macrobrachium rosenbergii", round(sd(TotalEmployee_PRE), digits = 1)],
+    FarmDetails_DataTable[CulturedSpecies == "Macrobrachium rosenbergii" & Intensity == "Extensive", round(sd(TotalEmployee_PRE), digits = 1)],
+    FarmDetails_DataTable[CulturedSpecies == "Macrobrachium rosenbergii" & Intensity == "Semi", round(sd(TotalEmployee_PRE), digits = 1)]),
+ c("M. rosenbergii farms Mean Number of Staff post-covid", 
+    FarmDetails_DataTable[CulturedSpecies == "Macrobrachium rosenbergii", round(mean(TotalEmployee_POST), digits = 1)],
+    FarmDetails_DataTable[CulturedSpecies == "Macrobrachium rosenbergii" & Intensity == "Extensive", round(mean(TotalEmployee_POST), digits = 1)],
+    FarmDetails_DataTable[CulturedSpecies == "Macrobrachium rosenbergii" & Intensity == "Semi", round(mean(TotalEmployee_POST), digits = 1)]),
+ c("M. rosenbergii farms Std Number of Staff post-covid", 
+    FarmDetails_DataTable[CulturedSpecies == "Macrobrachium rosenbergii", round(sd(TotalEmployee_POST), digits = 1)],
+    FarmDetails_DataTable[CulturedSpecies == "Macrobrachium rosenbergii" & Intensity == "Extensive", round(sd(TotalEmployee_POST), digits = 1)],
+    FarmDetails_DataTable[CulturedSpecies == "Macrobrachium rosenbergii" & Intensity == "Semi", round(sd(TotalEmployee_POST), digits = 1)]),
+ 
+ c("Mean Number of Permanent Staff pre-covid", 
+    FarmDetails_DataTable[, round(mean(Perm_N_1), digits = 1)],
+    FarmDetails_DataTable[Intensity == "Extensive", round(mean(Perm_N_1), digits = 1)],
+    FarmDetails_DataTable[Intensity == "Semi", round(mean(Perm_N_1), digits = 1)]),
+ c("Std Number of Permanent Staff pre-covid", 
+    FarmDetails_DataTable[, round(sd(Perm_N_1), digits = 1)],
+    FarmDetails_DataTable[Intensity == "Extensive", round(sd(Perm_N_1), digits = 1)],
+    FarmDetails_DataTable[Intensity == "Semi", round(sd(Perm_N_1), digits = 1)]),
+ c("Mean Number of Permanent Staff post-covid", 
+    FarmDetails_DataTable[, round(mean(Perm_N_2), digits = 1)],
+    FarmDetails_DataTable[Intensity == "Extensive", round(mean(Perm_N_2), digits = 1)],
+    FarmDetails_DataTable[Intensity == "Semi", round(mean(Perm_N_2), digits = 1)]),
+ c("Std Number of Permanent Staff post-covid", 
+    FarmDetails_DataTable[, round(sd(Perm_N_2), digits = 1)],
+    FarmDetails_DataTable[Intensity == "Extensive", round(sd(Perm_N_2), digits = 1)],
+    FarmDetails_DataTable[Intensity == "Semi", round(sd(Perm_N_2), digits = 1)]),
+ 
+ c("P. monodon farms Mean Number of Permanent Staff pre-covid", 
+    FarmDetails_DataTable[CulturedSpecies == "Peneaus monodon", round(mean(Perm_N_1), digits = 1)],
+    FarmDetails_DataTable[CulturedSpecies == "Peneaus monodon" & Intensity == "Extensive", round(mean(Perm_N_1), digits = 1)],
+    FarmDetails_DataTable[CulturedSpecies == "Peneaus monodon" & Intensity == "Semi", round(mean(Perm_N_1), digits = 1)]),
+ c("P. monodon farms Std Number of Permanent Staff pre-covid", 
+    FarmDetails_DataTable[CulturedSpecies == "Peneaus monodon", round(sd(Perm_N_1), digits = 1)],
+    FarmDetails_DataTable[CulturedSpecies == "Peneaus monodon" & Intensity == "Extensive", round(sd(Perm_N_1), digits = 1)],
+    FarmDetails_DataTable[CulturedSpecies == "Peneaus monodon" & Intensity == "Semi", round(sd(Perm_N_1), digits = 1)]),
+ c("P. monodon farms Mean Number of Permanent Staff post-covid", 
+    FarmDetails_DataTable[CulturedSpecies == "Peneaus monodon", round(mean(Perm_N_2), digits = 1)],
+    FarmDetails_DataTable[CulturedSpecies == "Peneaus monodon" & Intensity == "Extensive", round(mean(Perm_N_2), digits = 1)],
+    FarmDetails_DataTable[CulturedSpecies == "Peneaus monodon" & Intensity == "Semi", round(mean(Perm_N_2), digits = 1)]),
+ c("P. monodon farms Std Number of Permanent Staff post-covid", 
+    FarmDetails_DataTable[CulturedSpecies == "Peneaus monodon", round(sd(Perm_N_2), digits = 1)],
+    FarmDetails_DataTable[CulturedSpecies == "Peneaus monodon" & Intensity == "Extensive", round(sd(Perm_N_2), digits = 1)],
+    FarmDetails_DataTable[CulturedSpecies == "Peneaus monodon" & Intensity == "Semi", round(sd(Perm_N_2), digits = 1)]),
+ 
+ c("M. rosenbergii farms Mean Number of Permanent Staff pre-covid", 
+    FarmDetails_DataTable[CulturedSpecies == "Macrobrachium rosenbergii", round(mean(Perm_N_1), digits = 1)],
+    FarmDetails_DataTable[CulturedSpecies == "Macrobrachium rosenbergii" & Intensity == "Extensive", round(mean(Perm_N_1), digits = 1)],
+    FarmDetails_DataTable[CulturedSpecies == "Macrobrachium rosenbergii" & Intensity == "Semi", round(mean(Perm_N_1), digits = 1)]),
+ c("M. rosenbergii farms Std Number of Permanent Staff pre-covid", 
+    FarmDetails_DataTable[CulturedSpecies == "Macrobrachium rosenbergii", round(sd(Perm_N_1), digits = 1)],
+    FarmDetails_DataTable[CulturedSpecies == "Macrobrachium rosenbergii" & Intensity == "Extensive", round(sd(Perm_N_1), digits = 1)],
+    FarmDetails_DataTable[CulturedSpecies == "Macrobrachium rosenbergii" & Intensity == "Semi", round(sd(Perm_N_1), digits = 1)]),
+ c("M. rosenbergii farms Mean Number of Permanent Staff post-covid", 
+    FarmDetails_DataTable[CulturedSpecies == "Macrobrachium rosenbergii", round(mean(Perm_N_2), digits = 1)],
+    FarmDetails_DataTable[CulturedSpecies == "Macrobrachium rosenbergii" & Intensity == "Extensive", round(mean(Perm_N_2), digits = 1)],
+    FarmDetails_DataTable[CulturedSpecies == "Macrobrachium rosenbergii" & Intensity == "Semi", round(mean(Perm_N_2), digits = 1)]),
+ c("M. rosenbergii farms Std Number of Permanent Staff post-covid", 
+    FarmDetails_DataTable[CulturedSpecies == "Macrobrachium rosenbergii", round(sd(Perm_N_2), digits = 1)],
+    FarmDetails_DataTable[CulturedSpecies == "Macrobrachium rosenbergii" & Intensity == "Extensive", round(sd(Perm_N_2), digits = 1)],
+    FarmDetails_DataTable[CulturedSpecies == "Macrobrachium rosenbergii" & Intensity == "Semi", round(sd(Perm_N_2), digits = 1)])
+))
+colnames(FarmDetailsOutputTable) <- c("Parameter", "Total", "Extensive", "Semi-intensive")
+FarmDetailsOutputTable_html <- kbl(FarmDetailsOutputTable) %>%
+  kable_paper(full_width = FALSE)
+```
+
+## Details of the Farms
+
+In this section we provide information about the farms and those that are extensive or semi-intensive.
+
+`r FarmDetailsOutputTable_html`
+In this section we provide details about farm sizes based on xx.
